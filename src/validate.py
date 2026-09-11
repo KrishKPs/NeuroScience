@@ -113,6 +113,27 @@ def validate_pd(
     }
 
 
+def whole_brain_atrophy_map(
+    enigma_cortthick_df: pd.DataFrame,
+    enigma_subvol_df: pd.DataFrame,
+    atlas_info: pd.DataFrame,
+) -> pd.Series:
+    """Combine a disease's cortical-thickness (68 regions) and subcortical-
+    volume (14 regions) ENIGMA Cohen's d tables into one whole-brain atrophy
+    map (82 of 83 DK regions — everything except brainstem, which ENIGMA
+    doesn't cover). Used for the ML layer (§7.7), whose "83 samples" framing
+    implies a whole-brain target, not the 14-region subcortical-only map used
+    for PD's null-tested validation (validate_pd) or the 68-region
+    cortical-only map used for SCZ's (validate_scz).
+    """
+    cortical = cortical_atrophy_map(enigma_cortthick_df, atlas_info)
+    subcortical = subcortical_atrophy_map(enigma_subvol_df, atlas_info)
+    combined = pd.concat([cortical, subcortical]).sort_index()
+    if combined.index.duplicated().any():
+        raise ValueError("unexpected overlap between cortical and subcortical region ids")
+    return combined
+
+
 def cortical_atrophy_map(enigma_cortthick_df: pd.DataFrame, atlas_info: pd.DataFrame) -> pd.Series:
     """Map an ENIGMA cortical-thickness table's `Structure` column
     (`{hemisphere}_{label}`, e.g. 'L_bankssts') onto DK atlas region ids for

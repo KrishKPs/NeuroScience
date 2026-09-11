@@ -11,9 +11,13 @@ import numpy as np
 import pandas as pd
 
 from src.data_load import fetch_dk_atlas, get_region_centroids, load_config
-from src.validate import validate_pd, validate_scz, validate_ad, ad_vulnerable_region_indicator
+from src.validate import (
+    validate_pd, validate_scz, validate_ad, ad_vulnerable_region_indicator,
+    whole_brain_atrophy_map,
+)
 from src.specificity import build_specificity_matrix
 from src.figures import plot_hero_figure, plot_specificity_matrix, plot_validation_scatter
+from src.model import run_elasticnet_cv, genes_overlapping_gwas
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 INTERIM = PROJECT_ROOT / "data" / "interim"
@@ -220,8 +224,96 @@ def run_week4_figures(pd_result: dict, scz_result: dict, ad_result: dict, save: 
     return {"hero_fig": hero_fig, "spec_fig": spec_fig, "corr_matrix": corr_matrix}
 
 
+def run_week5_ml_layer(save: bool = True) -> dict:
+    """ElasticNet regression predicting PD's whole-brain atrophy map from
+    regional expression (CLAUDE.md §7.7), plus GWAS-overlap check."""
+    cfg = load_config()
+    seed = cfg["seed"]
+
+    expr = pd.read_csv(INTERIM / "expression_matrix.csv", index_col=0)
+    expr.index = expr.index.astype(int)
+
+    atlas = fetch_dk_atlas()
+    atlas_info = pd.read_csv(atlas["info"])
+    enigma_ct = pd.read_csv(INTERIM / "enigma_pd_CortThick_PDvsCN.csv")
+    enigma_sv = pd.read_csv(INTERIM / "enigma_pd_Subvol_PDvsCN.csv")
+    atrophy = whole_brain_atrophy_map(enigma_ct, enigma_sv, atlas_info)
+
+    result = run_elasticnet_cv(expr, atrophy, n_folds=5, seed=seed)
+
+    pd_genes = pd.read_csv(INTERIM / "pd_gwas_risk_genes.csv")["gene"].tolist()
+    overlap = genes_overlapping_gwas(result["nonzero_genes"], pd_genes)
+
+    if save:
+        PROCESSED.mkdir(parents=True, exist_ok=True)
+        result["nonzero_genes"].to_csv(PROCESSED / "pd_ml_nonzero_genes.csv", header=["coef"])
+        overlap.to_csv(PROCESSED / "pd_ml_genes_overlapping_gwas.csv", header=["coef"])
+        pd.DataFrame({
+            "region_id": result["y_true"].index,
+            "atrophy_true": result["y_true"].to_numpy(),
+            "atrophy_pred_cv": result["y_pred_cv"].to_numpy(),
+        }).to_csv(PROCESSED / "pd_ml_cv_predictions.csv", index=False)
+
+        summary = {
+            "disease": "parkinsons",
+            "n_regions": result["n_regions"],
+            "n_folds": result["n_folds"],
+            "cv_r2_pooled": result["cv_r2_pooled"],
+            "cv_r2_per_fold": result["cv_r2_per_fold"],
+            "final_model_alpha": result["final_model_alpha"],
+            "final_model_l1_ratio": result["final_model_l1_ratio"],
+            "n_nonzero_genes": result["n_nonzero_genes"],
+            "n_genes_overlapping_gwas": len(overlap),
+            "note": "83 samples (here 82) x ~15,600 features — exploratory/interpretability framing, not an accuracy claim (CLAUDE.md §7.7)",
+        }
+        with open(PROCESSED / "pd_ml_summary.json", "w") as f:
+            json.dump(summary, f, indent=2)
+
+        print("Saved Week 5 ML layer outputs to", PROCESSED)
+        print(json.dumps(summary, indent=2))
+        print("Genes overlapping GWAS risk set:")
+        print(overlap)
+
+    return {**result, "genes_overlapping_gwas": overlap}
+
+
+def run_week5_validation_figures(pd_result: dict, scz_result: dict, save: bool = True) -> dict:
+    """Validation figure (§8 deliverable 3): score vs. ENIGMA atrophy scatter
+    with the spatial null's p-value annotated, for PD and SCZ (both have real
+    continuous ENIGMA ground truth; AD's fallback ROI indicator isn't a
+    continuous atrophy map, so it doesn't get this scatter)."""
+    RESULTS_FIGURES.mkdir(parents=True, exist_ok=True)
+
+    pd_summary_path = PROCESSED / "pd_validation_summary.json"
+    scz_summary_path = PROCESSED / "scz_validation_summary.json"
+    with open(pd_summary_path) as f:
+        pd_summary = json.load(f)
+    with open(scz_summary_path) as f:
+        scz_summary = json.load(f)
+
+    pd_fig = plot_validation_scatter(
+        pd_result["score_map_subcortex"], pd_result["atrophy_map"],
+        title="Parkinson's: expression signature vs. subcortical atrophy",
+        p_value=pd_summary["spatial_null_p"], null_type="variogram",
+        save_path=RESULTS_FIGURES / "validation_pd.png" if save else None,
+    )
+    scz_fig = plot_validation_scatter(
+        scz_result["score_map_cortex"], scz_result["atrophy_map"],
+        title="Schizophrenia: expression signature vs. cortical atrophy",
+        p_value=scz_summary["spatial_null_p"], null_type="spin",
+        save_path=RESULTS_FIGURES / "validation_scz.png" if save else None,
+    )
+
+    if save:
+        print("Saved validation figures to", RESULTS_FIGURES)
+
+    return {"pd_fig": pd_fig, "scz_fig": scz_fig}
+
+
 if __name__ == "__main__":
     pd_result = run_week3_pd_validation()
     scz_result = run_week4_scz_validation()
     ad_result = run_week4_ad_validation()
     run_week4_figures(pd_result, scz_result, ad_result)
+    run_week5_ml_layer()
+    run_week5_validation_figures(pd_result, scz_result)

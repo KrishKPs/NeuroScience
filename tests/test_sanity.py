@@ -139,3 +139,23 @@ def test_specificity_matrix_diagonal_present():
     for disease in ["parkinsons", "schizophrenia"]:
         row = matrix.loc[disease]
         assert row.idxmax() == disease, f"{disease}'s own atrophy map should be its strongest match"
+
+
+def test_pd_ml_layer_summary():
+    path = PROCESSED / "pd_ml_summary.json"
+    if not path.exists():
+        pytest.skip(f"{path} not built yet — run run_pipeline.run_week5_ml_layer")
+    with open(path) as f:
+        summary = json.load(f)
+    assert -1 <= summary["cv_r2_pooled"] <= 1
+    assert summary["n_nonzero_genes"] > 0, "ElasticNet selected zero genes — alpha likely too high"
+    assert summary["n_regions"] > 50, "too few regions for a meaningful wide regression"
+
+
+def test_pd_ml_nonzero_genes_not_training_only():
+    path = PROCESSED / "pd_ml_nonzero_genes.csv"
+    if not path.exists():
+        pytest.skip(f"{path} not built yet — run run_pipeline.run_week5_ml_layer")
+    genes = pd.read_csv(path, index_col=0)
+    assert len(genes) > 0
+    assert genes["coef"].notna().all()
