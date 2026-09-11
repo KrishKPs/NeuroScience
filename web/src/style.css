@@ -1,0 +1,121 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #111318;
+  color: #e8e8ec;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#scene-container {
+  position: absolute;
+  inset: 0;
+}
+
+#ui-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: 260px 1fr 320px;
+  grid-template-rows: auto 1fr auto;
+  gap: 12px;
+  padding: 16px;
+}
+
+#ui-overlay > * {
+  pointer-events: auto;
+}
+
+.panel {
+  background: rgba(20, 22, 28, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  backdrop-filter: blur(6px);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.panel h3 {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9aa0ac;
+}
+
+#disease-selector {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#stats-panel {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: start;
+}
+
+#info-panel {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+}
+
+#specificity-matrix {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: start;
+}
+
+#validation-scatter {
+  grid-column: 3;
+  grid-row: 3;
+  align-self: end;
+}
+
+button.disease-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e8e8ec;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 6px;
+  font-size: 13px;
+}
+
+button.disease-btn.active {
+  background: #3a6fd8;
+  border-color: #3a6fd8;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.stat-row .label {
+  color: #9aa0ac;
+}
+
+.badge-ml {
+  display: inline-block;
+  font-size: 10px;
+  background: #3a6fd8;
+  color: white;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+}

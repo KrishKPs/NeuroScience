@@ -9,5 +9,6 @@
   "gene_set_null_gene_set_size": 164,
   "approx_spatial_null_p": 0.1386861313868613,
   "approx_spatial_null_type": "brainsmash_variogram_whole_brain_n83_APPROXIMATE",
+  "n_regions": 83,
   "note": "not significant at alpha=0.05 under either null; reported honestly (CLAUDE.md rule 6)"
 }

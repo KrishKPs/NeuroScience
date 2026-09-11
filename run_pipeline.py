@@ -18,6 +18,7 @@ from src.validate import (
 from src.specificity import build_specificity_matrix
 from src.figures import plot_hero_figure, plot_specificity_matrix, plot_validation_scatter
 from src.model import run_elasticnet_cv, genes_overlapping_gwas
+from src.export_web_data import export_all as export_web_data
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 INTERIM = PROJECT_ROOT / "data" / "interim"
@@ -174,6 +175,7 @@ def run_week4_ad_validation(save: bool = True) -> dict:
             "gene_set_null_gene_set_size": result["gene_set_null"]["gene_set_size"],
             "approx_spatial_null_p": float(result["approx_whole_brain_spatial_null"]["p_value"]),
             "approx_spatial_null_type": "brainsmash_variogram_whole_brain_n83_APPROXIMATE",
+            "n_regions": result["gene_set_null"]["n_regions"],
             "note": "not significant at alpha=0.05 under either null; reported honestly (CLAUDE.md rule 6)",
         }
         with open(PROCESSED / "ad_validation_summary.json", "w") as f:
@@ -310,6 +312,16 @@ def run_week5_validation_figures(pd_result: dict, scz_result: dict, save: bool =
     return {"pd_fig": pd_fig, "scz_fig": scz_fig}
 
 
+def run_week7_export_web_data(save: bool = True) -> dict:
+    """Export the finished analysis to web/public/data/ for the interactive
+    web viewer (CLAUDE.md §17). Requires Weeks 3-5's outputs to already exist
+    in data/processed/ and results/tables/."""
+    result = export_web_data(save=save)
+    if save:
+        print("Exported web viewer data to web/public/data/")
+    return result
+
+
 if __name__ == "__main__":
     pd_result = run_week3_pd_validation()
     scz_result = run_week4_scz_validation()
@@ -317,3 +329,4 @@ if __name__ == "__main__":
     run_week4_figures(pd_result, scz_result, ad_result)
     run_week5_ml_layer()
     run_week5_validation_figures(pd_result, scz_result)
+    run_week7_export_web_data()

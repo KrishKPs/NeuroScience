@@ -14,3 +14,8 @@ venv/
 
 # OS
 .DS_Store
+
+# Web viewer (web/public/data/*.json is committed — generated but small and
+# reproducible from run_pipeline.py, same convention as results/figures/)
+web/node_modules/
+web/dist/
