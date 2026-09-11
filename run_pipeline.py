@@ -313,12 +313,13 @@ def run_week5_validation_figures(pd_result: dict, scz_result: dict, save: bool =
 
 
 def run_week7_export_web_data(save: bool = True) -> dict:
-    """Export the finished analysis to web/public/data/ for the interactive
-    web viewer (CLAUDE.md §17). Requires Weeks 3-5's outputs to already exist
-    in data/processed/ and results/tables/."""
+    """Export the finished analysis to web/public/{data,assets}/ per the
+    frontend's data contract (src/Frontend.md §9/§13, CLAUDE.md §17).
+    Requires Weeks 3-5's outputs to already exist in data/processed/ and
+    results/tables/."""
     result = export_web_data(save=save)
     if save:
-        print("Exported web viewer data to web/public/data/")
+        print("Exported web viewer data to web/public/data/ and web/public/assets/")
     return result
 
 

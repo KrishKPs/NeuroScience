@@ -37,6 +37,52 @@ def project_scores_to_surface(score_map: pd.Series, lh_annot, rh_annot) -> tuple
     return lh_vertex, rh_vertex
 
 
+def plot_2d_fallback_schematic(
+    score_map: pd.Series,
+    lh_annot,
+    rh_annot,
+    disease_label: str,
+    vmax: float,
+    save_path=None,
+):
+    """Labeled lateral + superior brain schematic for one disease — the
+    no-WebGL fallback (Frontend.md §12: "a designed 2D experience, not a
+    banner"). Left hemisphere lateral view (matches the hero figure's
+    convention) + a top-down view so both hemispheres are visible at once.
+    """
+    from nilearn import plotting
+
+    lh_v, rh_v = project_scores_to_surface(score_map, lh_annot, rh_annot)
+
+    fig, axes = plt.subplots(1, 2, figsize=(9, 4.5), subplot_kw={"projection": "3d"})
+
+    plotting.plot_surf_stat_map(
+        surf_mesh=str(FSAVERAGE5_LH_MESH), stat_map=lh_v, hemi="left", view="lateral",
+        cmap="RdBu_r", vmin=-vmax, vmax=vmax, colorbar=False,
+        title="Lateral (L)", axes=axes[0], figure=fig,
+    )
+    # Superior view layers BOTH hemispheres onto one 3D axes (two calls, one
+    # per hemisphere mesh) so the fallback shows the whole brain from above,
+    # not just the left side.
+    plotting.plot_surf_stat_map(
+        surf_mesh=str(FSAVERAGE5_LH_MESH), stat_map=lh_v, hemi="left", view="dorsal",
+        cmap="RdBu_r", vmin=-vmax, vmax=vmax, colorbar=False,
+        title="Superior", axes=axes[1], figure=fig,
+    )
+    plotting.plot_surf_stat_map(
+        surf_mesh=str(FSAVERAGE5_RH_MESH), stat_map=rh_v, hemi="right", view="dorsal",
+        cmap="RdBu_r", vmin=-vmax, vmax=vmax, colorbar=True,
+        axes=axes[1], figure=fig,
+    )
+
+    fig.suptitle(f"{disease_label} — 2D fallback view", fontsize=13)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+    return fig
+
+
 def plot_hero_figure(
     score_maps: dict[str, pd.Series],
     lh_annot,

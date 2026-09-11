@@ -1,158 +1,103 @@
-"""Export the finished analysis to browser-consumable JSON for the web viewer
-(CLAUDE.md §17). Pure read + reshape of already-committed pipeline outputs —
-no new numbers get computed here except genes_top_contributors, which reuses
-score.zscore_genes directly so it stays provably consistent with the region
-scores already shown elsewhere.
+"""Export the finished analysis to the web frontend's data contract
+(src/Frontend.md §9) and prepare its static mesh assets (§13). Pure read +
+reshape of already-committed pipeline outputs — the one new computation
+(top_genes) reuses score.zscore_genes directly so those numbers stay
+consistent with the score already shown elsewhere.
 """
 from __future__ import annotations
 
+import gzip
 import json
+import shutil
 from pathlib import Path
 
-import nibabel as nib
-import numpy as np
 import pandas as pd
 
-from src.data_load import fetch_dk_atlas, get_region_centroids
+from src.data_load import fetch_dk_atlas
+from src.figures import plot_2d_fallback_schematic
 from src.harmonize import reconcile_genes
 from src.score import zscore_genes
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 INTERIM = PROJECT_ROOT / "data" / "interim"
 PROCESSED = PROJECT_ROOT / "data" / "processed"
-WEB_DATA = PROJECT_ROOT / "web" / "public" / "data"
+WEB_PUBLIC = PROJECT_ROOT / "web" / "public"
+WEB_ASSETS = WEB_PUBLIC / "assets"
+WEB_DATA = WEB_PUBLIC / "data"
 
-DISEASES = ["parkinsons", "schizophrenia", "alzheimers"]
+# Frontend.md uses short disease codes; the rest of the pipeline (CLAUDE.md,
+# run_pipeline.py) uses full names — this is the one place that maps between them.
+DISEASE_CODES = {"parkinsons": "PD", "schizophrenia": "SCZ", "alzheimers": "AD"}
+DISEASE_CODES_REVERSE = {v: k for k, v in DISEASE_CODES.items()}
+DISEASE_LABELS = {"PD": "Parkinson's", "SCZ": "Schizophrenia", "AD": "Alzheimer's"}
 DISEASE_PREFIX = {"parkinsons": "pd", "schizophrenia": "scz", "alzheimers": "ad"}
 
 
-def export_mesh(save: bool = True) -> dict:
-    """Merged (both hemispheres) cortical surface geometry, JSON typed arrays
-    (not glTF — see CLAUDE.md §17 for why). Built from the same GIFTI files
-    src/figures.py::project_scores_to_surface uses for the static hero figure.
-    """
-    atlas_surf = fetch_dk_atlas(surface=True)
-    lh_annot, rh_annot = atlas_surf["image"]
+def _region_string_id(hemi: str, label: str) -> str:
+    return f"{hemi}_{label}"
 
+
+def _region_display_name(hemi: str, label: str) -> str:
+    words = label.replace("_", " ")
+    # Split DK's concatenated labels (e.g. "caudalanteriorcingulate") is not
+    # attempted — these are atlas-standard identifiers, shown as-is; only
+    # hemisphere gets a readable suffix.
+    hemi_suffix = {"L": " (L)", "R": " (R)", "B": ""}[hemi]
+    return f"{words}{hemi_suffix}"
+
+
+def prepare_mesh_assets(save: bool = True) -> dict:
+    """Copy the DK surface + label GIfTI files NiiVue will load directly
+    (Frontend.md §16: GIfTI, not .mz3 — NiiVue supports GIfTI natively for
+    both mesh geometry and overlays, so the files abagen already ships and
+    CLAUDE.md's pipeline already uses are reused with zero conversion).
+
+    Pial: abagen's bundled fsaverage5-pial-{lh,rh}.surf.gii.gz.
+    Inflated: neuromaps' cached fsaverage 10k density surface — verified
+    vertex-for-vertex identical to abagen's pial mesh (same underlying
+    fsaverage5 topology, confirmed 2026-09-11, max abs coordinate diff 0.0),
+    so it aligns with the same DK vertex labels with no remapping needed.
+    Labels: abagen's bundled atlas-desikankilliany-{lh,rh}.label.gii.gz.
+
+    Ships as plain .gii (decompressed) rather than .gii.gz — avoids any
+    doubt about whether the browser-side GIfTI loader handles gzip.
+    """
     abagen_data = Path(__import__("abagen").__file__).parent / "data"
-    lh_mesh = abagen_data / "fsaverage5-pial-lh.surf.gii.gz"
-    rh_mesh = abagen_data / "fsaverage5-pial-rh.surf.gii.gz"
+    neuromaps_fsaverage = Path.home() / "neuromaps-data" / "atlases" / "fsaverage"
 
-    lh_verts, lh_faces = nib.load(lh_mesh).agg_data()
-    rh_verts, rh_faces = nib.load(rh_mesh).agg_data()
-    lh_labels = nib.load(lh_annot).agg_data().astype(int)
-    rh_labels = nib.load(rh_annot).agg_data().astype(int)
-
-    n_lh = lh_verts.shape[0]
-    vertices = np.vstack([lh_verts, rh_verts]).astype(np.float32)
-    faces = np.vstack([lh_faces, rh_faces + n_lh]).astype(np.int32)
-    vertex_region_id = np.concatenate([lh_labels, rh_labels]).astype(int)
-
-    mesh = {
-        "_provenance": {
-            "source": "abagen fsaverage5-pial-{lh,rh}.surf.gii.gz + atlas-desikankilliany-{lh,rh}.label.gii.gz",
-            "n_vertices_per_hemi": int(n_lh),
-        },
-        "vertices": vertices.flatten().tolist(),
-        "faces": faces.flatten().tolist(),
-        "vertex_region_id": vertex_region_id.tolist(),
+    sources = {
+        "dk_pial_lh.gii": abagen_data / "fsaverage5-pial-lh.surf.gii.gz",
+        "dk_pial_rh.gii": abagen_data / "fsaverage5-pial-rh.surf.gii.gz",
+        "dk_labels_lh.gii": abagen_data / "atlas-desikankilliany-lh.label.gii.gz",
+        "dk_labels_rh.gii": abagen_data / "atlas-desikankilliany-rh.label.gii.gz",
+    }
+    inflated_sources = {
+        "dk_inflated_lh.gii": neuromaps_fsaverage / "tpl-fsaverage_den-10k_hemi-L_inflated.surf.gii",
+        "dk_inflated_rh.gii": neuromaps_fsaverage / "tpl-fsaverage_den-10k_hemi-R_inflated.surf.gii",
     }
 
     if save:
-        WEB_DATA.mkdir(parents=True, exist_ok=True)
-        with open(WEB_DATA / "mesh.json", "w") as f:
-            json.dump(mesh, f)
-        print(f"Saved mesh.json: {len(mesh['vertices'])//3} vertices, {len(mesh['faces'])//3} faces")
+        WEB_ASSETS.mkdir(parents=True, exist_ok=True)
+        for dest_name, src_path in sources.items():
+            with gzip.open(src_path, "rb") as f_in:
+                with open(WEB_ASSETS / dest_name, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+        for dest_name, src_path in inflated_sources.items():
+            shutil.copyfile(src_path, WEB_ASSETS / dest_name)  # already uncompressed .gii
+        print(f"Saved {len(sources) + len(inflated_sources)} mesh/atlas assets to {WEB_ASSETS}")
 
-    return mesh
-
-
-def export_regions(save: bool = True) -> dict:
-    """One object per region id: atlas info + real MNI centroid + all three
-    disease scores + whichever atrophy value exists for that region/disease.
-    """
-    atlas = fetch_dk_atlas()
-    atlas_info = pd.read_csv(atlas["info"]).set_index("id")
-    coords = get_region_centroids(atlas)
-
-    scores = {}
-    for disease in DISEASES:
-        prefix = DISEASE_PREFIX[disease]
-        path = PROCESSED / f"{prefix}_score_map_full.csv"
-        scores[disease] = pd.read_csv(path, index_col=0)["score"]
-
-    atrophy = {"parkinsons": {}, "schizophrenia": {}, "alzheimers": {}}
-    pd_atrophy = pd.read_csv(PROCESSED / "pd_subcortex_atrophy_map.csv", index_col=0)["atrophy_d"]
-    scz_atrophy = pd.read_csv(PROCESSED / "scz_cortex_atrophy_map.csv", index_col=0)["atrophy_d"]
-    atrophy["parkinsons"] = pd_atrophy.to_dict()
-    atrophy["schizophrenia"] = scz_atrophy.to_dict()
-    # No continuous ENIGMA ground truth for AD (CLAUDE.md §16) — every region is null.
-
-    regions = {}
-    for region_id, row in atlas_info.iterrows():
-        rid = int(region_id)
-        c = coords.loc[rid]
-        regions[str(rid)] = {
-            "id": rid,
-            "label": row["label"],
-            "hemisphere": row["hemisphere"],
-            "structure": row["structure"],
-            "is_cortical": row["structure"] == "cortex",
-            "x": float(c["x"]), "y": float(c["y"]), "z": float(c["z"]),
-            "scores": {d: float(scores[d].get(rid, float("nan"))) for d in DISEASES},
-            "atrophy": {d: atrophy[d].get(rid) for d in DISEASES},
-        }
-
-    payload = {
-        "_meta": {"n_regions": len(regions), "atlas": "desikan_killiany", "seed": 1234},
-        "regions": regions,
-    }
-
-    if save:
-        WEB_DATA.mkdir(parents=True, exist_ok=True)
-        with open(WEB_DATA / "regions.json", "w") as f:
-            json.dump(payload, f)
-        print(f"Saved regions.json: {len(regions)} regions")
-
-    return payload
+    return {"pial": sources, "inflated": inflated_sources}
 
 
-def export_validation_summary(save: bool = True) -> dict:
-    """Copy-through merge of the three *_validation_summary.json files plus
-    pd_ml_summary.json — no new numbers, just one fetch instead of four."""
-    summary = {}
-    for disease in DISEASES:
-        prefix = DISEASE_PREFIX[disease]
-        with open(PROCESSED / f"{prefix}_validation_summary.json") as f:
-            summary[disease] = json.load(f)
-
-    with open(PROCESSED / "pd_ml_summary.json") as f:
-        summary["parkinsons"]["ml_layer"] = json.load(f)
-
-    if save:
-        WEB_DATA.mkdir(parents=True, exist_ok=True)
-        with open(WEB_DATA / "validation_summary.json", "w") as f:
-            json.dump(summary, f, indent=2)
-        print("Saved validation_summary.json")
-
-    return summary
-
-
-def export_specificity_matrix(save: bool = True) -> dict:
-    matrix_df = pd.read_csv(PROJECT_ROOT / "results" / "tables" / "specificity_matrix.csv", index_col=0)
-    payload = {
-        "diseases": matrix_df.index.tolist(),
-        "atrophy_maps": matrix_df.columns.tolist(),
-        "matrix": matrix_df.to_numpy().tolist(),
-    }
-
-    if save:
-        WEB_DATA.mkdir(parents=True, exist_ok=True)
-        with open(WEB_DATA / "specificity_matrix.json", "w") as f:
-            json.dump(payload, f, indent=2)
-        print("Saved specificity_matrix.json")
-
-    return payload
+def build_region_index(atlas_info: pd.DataFrame) -> dict:
+    """Maps our string region ids ('L_putamen') to the mesh's integer DK
+    label ids (37) — the join key the frontend needs to color vertices from
+    region-level data (Frontend.md §9's `region_index` asset)."""
+    index = {}
+    for _, row in atlas_info.iterrows():
+        rid = _region_string_id(row["hemisphere"], row["label"])
+        index[rid] = int(row["id"])
+    return index
 
 
 def _matched_genes_for(disease: str, expression: pd.DataFrame) -> list[str]:
@@ -160,57 +105,184 @@ def _matched_genes_for(disease: str, expression: pd.DataFrame) -> list[str]:
     if disease == "parkinsons":
         return pd.read_csv(INTERIM / "pd_matched_genes.csv")["gene"].tolist()
     risk_genes = pd.read_csv(INTERIM / f"{prefix}_gwas_risk_genes.csv")
-    result = reconcile_genes(risk_genes, expression)
-    return result["matched"]
+    return reconcile_genes(risk_genes, expression)["matched"]
 
 
-def export_genes_top_contributors(save: bool = True, top_n: int = 5) -> dict:
-    """Top-N genes per region per disease, by z-scored expression within that
-    disease's matched GWAS gene set — reuses score.zscore_genes directly so
-    these numbers stay consistent with the displayed region score.
-    """
-    expression = pd.read_csv(INTERIM / "expression_matrix.csv", index_col=0)
-    expression.index = expression.index.astype(int)
-    z = zscore_genes(expression)
+def build_disease_payload(
+    disease: str,
+    atlas_info: pd.DataFrame,
+    expression: pd.DataFrame,
+) -> dict:
+    prefix = DISEASE_PREFIX[disease]
+    score = pd.read_csv(PROCESSED / f"{prefix}_score_map_full.csv", index_col=0)["score"]
 
-    ml_nonzero_genes = set(pd.read_csv(PROCESSED / "pd_ml_nonzero_genes.csv", index_col=0).index)
+    atrophy_by_id: dict[int, float] = {}
+    if disease == "parkinsons":
+        atrophy_by_id = pd.read_csv(PROCESSED / "pd_subcortex_atrophy_map.csv", index_col=0)["atrophy_d"].to_dict()
+    elif disease == "schizophrenia":
+        atrophy_by_id = pd.read_csv(PROCESSED / "scz_cortex_atrophy_map.csv", index_col=0)["atrophy_d"].to_dict()
+    # Alzheimer's: no continuous ENIGMA ground truth exists (CLAUDE.md §16) — atrophy_by_id stays empty.
 
-    payload = {}
-    for disease in DISEASES:
-        matched = _matched_genes_for(disease, expression)
-        present = [g for g in matched if g in z.columns]
-        sub = z[present]
+    regions = []
+    for _, row in atlas_info.iterrows():
+        rid = int(row["id"])
+        regions.append({
+            "id": _region_string_id(row["hemisphere"], row["label"]),
+            "name": _region_display_name(row["hemisphere"], row["label"]),
+            "hemi": row["hemisphere"],
+            "structure": "cortical" if row["structure"] == "cortex" else "subcortical",
+            "signature": float(score.get(rid, float("nan"))),
+            "atrophy": atrophy_by_id.get(rid),  # None (-> JSON null) where no ground truth exists
+        })
 
-        disease_payload = {}
-        for region_id, row in sub.iterrows():
-            top = row.sort_values(ascending=False).head(top_n)
-            disease_payload[str(int(region_id))] = [
-                {
-                    "gene": gene,
-                    "z": float(val),
-                    **({"in_ml_nonzero": True} if disease == "parkinsons" and gene in ml_nonzero_genes else {}),
-                }
-                for gene, val in top.items()
-            ]
-        payload[disease] = disease_payload
+    with open(PROCESSED / f"{prefix}_validation_summary.json") as f:
+        vs = json.load(f)
 
-    if save:
-        WEB_DATA.mkdir(parents=True, exist_ok=True)
-        with open(WEB_DATA / "genes_top_contributors.json", "w") as f:
-            json.dump(payload, f)
-        print("Saved genes_top_contributors.json")
+    r_field = {
+        "parkinsons": "real_r_subcortex_n14",
+        "schizophrenia": "real_r_cortex_n68",
+        "alzheimers": "real_r_vs_vulnerable_roi_n83",
+    }[disease]
+    spatial_p_field = "approx_spatial_null_p" if disease == "alzheimers" else "spatial_null_p"
+    spatial_method = {
+        "parkinsons": "variogram (subcortex)",
+        "schizophrenia": "spin (cortex)",
+        "alzheimers": "approx. whole-brain variogram",
+    }[disease]
+
+    validation = {
+        "r": vs[r_field],
+        "n_regions": vs["n_regions"],
+        "geneset_p": vs["gene_set_null_p"],
+        "spatial_p": vs[spatial_p_field],
+        "spatial_method": spatial_method,
+        "significant": vs["gene_set_null_p"] < 0.05 and vs[spatial_p_field] < 0.05,
+    }
+    if disease == "alzheimers":
+        validation["ground_truth"] = "fallback canonical ROI list (no ENIGMA AD map available)"
+        validation["note"] = vs["note"]
+
+    payload = {
+        "label": DISEASE_LABELS[DISEASE_CODES[disease]],
+        "regions": regions,
+        "validation": validation,
+    }
+
+    if disease == "parkinsons":
+        with open(PROCESSED / "pd_ml_summary.json") as f:
+            ml = json.load(f)
+        nonzero = pd.read_csv(PROCESSED / "pd_ml_nonzero_genes.csv", index_col=0)
+        gwas_overlap = set(pd.read_csv(PROCESSED / "pd_ml_genes_overlapping_gwas.csv", index_col=0).index)
+        top_genes = [
+            {"symbol": gene, "weight": float(row["coef"]), "is_gwas": gene in gwas_overlap}
+            for gene, row in nonzero.iterrows()
+        ]
+        payload["model"] = {
+            "cv_r2": ml["cv_r2_pooled"],
+            "nonzero_genes": ml["n_nonzero_genes"],
+            "overlap_gwas": ml["n_genes_overlapping_gwas"],
+            "top_genes": top_genes,
+        }
 
     return payload
 
 
-def export_all(save: bool = True) -> dict:
+def build_specificity(disease_codes: list[str]) -> dict:
+    matrix_df = pd.read_csv(PROJECT_ROOT / "results" / "tables" / "specificity_matrix.csv", index_col=0)
+    full_name_order = [DISEASE_CODES_REVERSE[c] for c in disease_codes]
     return {
-        "mesh": export_mesh(save=save),
-        "regions": export_regions(save=save),
-        "validation_summary": export_validation_summary(save=save),
-        "specificity_matrix": export_specificity_matrix(save=save),
-        "genes_top_contributors": export_genes_top_contributors(save=save),
+        "rows": disease_codes,
+        "cols": disease_codes,
+        "matrix": matrix_df.loc[full_name_order, full_name_order].to_numpy().tolist(),
     }
+
+
+def build_colormap_domains(diseases: dict) -> dict:
+    """Symmetric domains computed from the REAL data range, not the
+    illustrative placeholder numbers in Frontend.md §9's example ([-2.5,2.5]
+    for signature) — our score is a MEAN of z-scored genes (CLAUDE.md §7.3),
+    which has a far tighter real range (~+/-0.35) than a single gene's raw
+    z-score. Using the example's literal domain would wash the colormap out
+    to near-white for every real value. Computed 2026-09-11: max abs
+    signature across all 3 diseases = 0.355 -> domain +/-0.4; max abs
+    atrophy across PD+SCZ (AD has none) = 0.536 -> domain +/-0.6.
+    """
+    max_sig = max(max(abs(r["signature"]) for r in d["regions"]) for d in diseases.values())
+    max_atr = max(
+        (abs(r["atrophy"]) for d in diseases.values() for r in d["regions"] if r["atrophy"] is not None),
+        default=0.1,
+    )
+    sig_domain = round(max_sig + 0.05, 1)
+    atr_domain = round(max_atr + 0.05, 1)
+    return {
+        "signature": {"type": "diverging", "domain": [-sig_domain, sig_domain], "units": "mean z"},
+        "atrophy": {"type": "diverging", "domain": [-atr_domain, atr_domain], "units": "Cohen's d"},
+    }
+
+
+def export_fallback_schematics(sig_domain: float, save: bool = True) -> None:
+    """Per-disease 2D lateral+superior PNGs for the no-WebGL fallback state
+    (Frontend.md §12 — "a designed 2D experience, not a banner")."""
+    atlas_surf = fetch_dk_atlas(surface=True)
+    lh_annot, rh_annot = atlas_surf["image"]
+
+    for disease, prefix in DISEASE_PREFIX.items():
+        score = pd.read_csv(PROCESSED / f"{prefix}_score_map_full.csv", index_col=0)["score"]
+        code = DISEASE_CODES[disease].lower()
+        plot_2d_fallback_schematic(
+            score, lh_annot, rh_annot, DISEASE_LABELS[DISEASE_CODES[disease]], vmax=sig_domain,
+            save_path=WEB_ASSETS / f"fallback_{code}.png" if save else None,
+        )
+    if save:
+        print(f"Saved 3 fallback schematics to {WEB_ASSETS}")
+
+
+def export_all(save: bool = True) -> dict:
+    atlas = fetch_dk_atlas()
+    atlas_info = pd.read_csv(atlas["info"])
+    expression = pd.read_csv(INTERIM / "expression_matrix.csv", index_col=0)
+    expression.index = expression.index.astype(int)
+
+    diseases = {
+        DISEASE_CODES[d]: build_disease_payload(d, atlas_info, expression)
+        for d in ["parkinsons", "schizophrenia", "alzheimers"]
+    }
+
+    colormaps = build_colormap_domains(diseases)
+
+    payload = {
+        "meta": {"atlas": "desikan-killiany", "n_regions": len(atlas_info), "generated": "2026-09-11"},
+        "colormaps": colormaps,
+        "diseases": diseases,
+        "specificity": build_specificity(["PD", "SCZ", "AD"]),
+        "assets": {
+            "mesh_pial": ["/assets/dk_pial_lh.gii", "/assets/dk_pial_rh.gii"],
+            "mesh_inflated": ["/assets/dk_inflated_lh.gii", "/assets/dk_inflated_rh.gii"],
+            "atlas_labels": ["/assets/dk_labels_lh.gii", "/assets/dk_labels_rh.gii"],
+            "region_index": "/assets/dk_region_index.json",
+            "fallback_2d": {
+                "PD": "/assets/fallback_pd.png",
+                "SCZ": "/assets/fallback_scz.png",
+                "AD": "/assets/fallback_ad.png",
+            },
+        },
+    }
+
+    region_index = build_region_index(atlas_info)
+
+    if save:
+        WEB_DATA.mkdir(parents=True, exist_ok=True)
+        WEB_ASSETS.mkdir(parents=True, exist_ok=True)
+        with open(WEB_DATA / "signature.json", "w") as f:
+            json.dump(payload, f)
+        with open(WEB_ASSETS / "dk_region_index.json", "w") as f:
+            json.dump(region_index, f, indent=2)
+        print(f"Saved signature.json ({len(atlas_info)} regions x 3 diseases) and dk_region_index.json")
+
+    prepare_mesh_assets(save=save)
+    export_fallback_schematics(sig_domain=colormaps["signature"]["domain"][1], save=save)
+
+    return {"signature": payload, "region_index": region_index}
 
 
 if __name__ == "__main__":
