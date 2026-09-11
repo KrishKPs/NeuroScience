@@ -99,3 +99,43 @@ def test_pd_validation_summary_reports_both_nulls():
     assert 0 <= summary["gene_set_null_p"] <= 1
     assert 0 <= summary["spatial_null_p"] <= 1
     assert summary["n_regions"] >= 10, "too few regions for a meaningful spatial null"
+
+
+@pytest.mark.parametrize("disease,extra_keys", [
+    ("scz", ["gene_set_null_p", "spatial_null_p"]),
+    ("ad", ["gene_set_null_p", "approx_spatial_null_p"]),
+])
+def test_week4_validation_summaries(disease, extra_keys):
+    path = PROCESSED / f"{disease}_validation_summary.json"
+    if not path.exists():
+        pytest.skip(f"{path} not built yet — run run_pipeline.py")
+    with open(path) as f:
+        summary = json.load(f)
+    for key in extra_keys:
+        assert 0 <= summary[key] <= 1, f"{key} should be a valid p-value"
+
+
+def test_week4_score_maps_no_unexpected_nans():
+    for disease in ("scz", "ad"):
+        path = PROCESSED / f"{disease}_score_map_full.csv"
+        if not path.exists():
+            pytest.skip(f"{path} not built yet — run run_pipeline.py")
+        score = pd.read_csv(path, index_col=0)["score"]
+        assert len(score) == 83
+        assert score.notna().all(), f"{disease} score map has unexpected NaNs"
+
+
+def test_specificity_matrix_diagonal_present():
+    path = PROJECT_ROOT / "results" / "tables" / "specificity_matrix.csv"
+    if not path.exists():
+        pytest.skip(f"{path} not built yet — run run_pipeline.py")
+    matrix = pd.read_csv(path, index_col=0)
+    assert matrix.shape == (3, 3)
+    # PD and SCZ have real continuous atrophy ground truth — diagonal should be
+    # their row's strongest correlation (H3, §7.6). AD uses a weaker fallback
+    # ROI indicator and was not significant under either null (§16), so its
+    # diagonal is NOT asserted to be strongest — that's an honest finding, not
+    # a bug (see docs/writeup.md limitations).
+    for disease in ["parkinsons", "schizophrenia"]:
+        row = matrix.loc[disease]
+        assert row.idxmax() == disease, f"{disease}'s own atrophy map should be its strongest match"

@@ -26,10 +26,12 @@ def load_config(path: str | Path = PROJECT_ROOT / "config" / "params.yaml") -> d
 # 1. AHBA expression matrix (abagen)
 # ---------------------------------------------------------------------------
 
-def fetch_dk_atlas():
+def fetch_dk_atlas(surface: bool = False):
     """Desikan-Killiany atlas (image + 83-region info table). Ships with abagen,
-    no download required."""
-    return abagen.fetch_desikan_killiany()
+    no download required. `surface=True` returns DK surface GIFTI label files
+    (lh, rh) instead of the volumetric image — needed for the cortical spin
+    test (CLAUDE.md §7.4b)."""
+    return abagen.fetch_desikan_killiany(surface=surface)
 
 
 def get_expression_matrix(
@@ -234,3 +236,25 @@ def load_enigma_atrophy(disorder: str) -> dict[str, pd.DataFrame]:
     from enigmatoolbox.datasets import load_summary_stats
 
     return load_summary_stats(disorder)
+
+
+def load_enigma_schizophrenia_atrophy() -> dict[str, pd.DataFrame]:
+    """Direct replacement for load_enigma_atrophy('schizophrenia').
+
+    enigmatoolbox==2.0.3's own `load_summary_stats('schizophrenia')` crashes
+    with FileNotFoundError: it references 'Schizophrenia_case-controls_SubVol.csv'
+    (plural "controls"), but the file actually shipped in the package is named
+    'Schizophrenia_case-control_SubVol.csv' (singular) — an upstream filename
+    typo. The package separately ships a correctly-named, consistent
+    'scz_case-controls_*.csv' set that the same function also loads before
+    hitting the broken reference; we load those three directly and skip the
+    broken 'Schizo_*' duplicate entirely (CLAUDE.md §16).
+    """
+    import enigmatoolbox.datasets as eds
+
+    root = Path(eds.__file__).parent / "summary_statistics"
+    return {
+        "CortThick_case_vs_controls": pd.read_csv(root / "scz_case-controls_CortThick.csv", on_bad_lines="skip"),
+        "CortSurf_case_vs_controls": pd.read_csv(root / "scz_case-controls_CortSurf.csv", on_bad_lines="skip"),
+        "SubVol_case_vs_controls": pd.read_csv(root / "scz_case-controls_SubVol.csv", on_bad_lines="skip"),
+    }

@@ -1,0 +1,13 @@
+{
+  "disease": "alzheimers",
+  "method": "mean",
+  "n_perm": 10000,
+  "seed": 1234,
+  "ground_truth": "fallback_canonical_roi_list (no ENIGMA AD map available)",
+  "real_r_vs_vulnerable_roi_n83": 0.23269192811277667,
+  "gene_set_null_p": 0.39856014398560147,
+  "gene_set_null_gene_set_size": 164,
+  "approx_spatial_null_p": 0.1386861313868613,
+  "approx_spatial_null_type": "brainsmash_variogram_whole_brain_n83_APPROXIMATE",
+  "note": "not significant at alpha=0.05 under either null; reported honestly (CLAUDE.md rule 6)"
+}

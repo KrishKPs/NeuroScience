@@ -1,0 +1,12 @@
+{
+  "disease": "schizophrenia",
+  "method": "mean",
+  "n_perm": 10000,
+  "seed": 1234,
+  "real_r_cortex_n68": 0.44831339191981345,
+  "gene_set_null_p": 0.0033996600339966003,
+  "gene_set_null_gene_set_size": 913,
+  "spatial_null_p": 0.0027997200279972004,
+  "spatial_null_type": "alexander_bloch_spin_cortex_n68",
+  "n_regions": 68
+}

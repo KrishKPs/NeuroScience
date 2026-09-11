@@ -111,3 +111,146 @@ def validate_pd(
         "n_perm": n_perm,
         "seed": seed,
     }
+
+
+def cortical_atrophy_map(enigma_cortthick_df: pd.DataFrame, atlas_info: pd.DataFrame) -> pd.Series:
+    """Map an ENIGMA cortical-thickness table's `Structure` column
+    (`{hemisphere}_{label}`, e.g. 'L_bankssts') onto DK atlas region ids for
+    all 68 cortical regions. Returns Cohen's d (d_icv), indexed by atlas
+    region id, matching the expression matrix's index. Used for
+    schizophrenia (cortical target -> spin test, CLAUDE.md §7.4b).
+    """
+    cortex = atlas_info[atlas_info["structure"] == "cortex"].copy()
+    cortex["structure_name"] = cortex["hemisphere"] + "_" + cortex["label"]
+
+    struct_to_d = enigma_cortthick_df.set_index("Structure")["d_icv"]
+    id_to_d = {
+        row["id"]: struct_to_d[row["structure_name"]]
+        for _, row in cortex.iterrows()
+        if row["structure_name"] in struct_to_d.index
+    }
+
+    if len(id_to_d) != 68:
+        raise ValueError(f"expected 68 matched cortical regions, mapped {len(id_to_d)}")
+
+    return pd.Series(id_to_d, name="atrophy_d").sort_index()
+
+
+def validate_scz(
+    expression: pd.DataFrame,
+    scz_risk_genes: list[str],
+    enigma_cortthick_df: pd.DataFrame,
+    atlas_info: pd.DataFrame,
+    lh_annot,
+    rh_annot,
+    method: str = "mean",
+    n_perm: int = 10000,
+    seed: int = 1234,
+) -> dict:
+    """Full validation for schizophrenia: score map, real correlation against
+    the ENIGMA cortical-thickness atrophy map (all 68 DK cortical regions),
+    gene-set null, and the cortical spin test (Alexander-Bloch) — SCZ's
+    target is fully cortical, so a spin test is the correct spatial null
+    here (unlike PD's subcortical proxy, see validate_pd / CLAUDE.md §7.4b).
+
+    `lh_annot`/`rh_annot` must be DK surface GIFTI label files
+    (abagen.fetch_desikan_killiany(surface=True)['image']); alexander_bloch's
+    expected data order is cortex regions sorted by ascending atlas id (L
+    1-34 then R 42-75) — verified against neuromaps' get_parcel_centroids
+    source, not assumed (CLAUDE.md §16). `region_score`/`atrophy_map` here
+    are naturally already in that order since atlas_info's `id` column sorts
+    L-cortex (1-34) before R-cortex (42-75).
+    """
+    atrophy_map = cortical_atrophy_map(enigma_cortthick_df, atlas_info)
+
+    score_map_full = region_score(expression, scz_risk_genes, method=method)
+    score_map_cortex = score_map_full.loc[atrophy_map.index]
+
+    gs_null = gene_set_null(
+        expression=expression, real_gene_set=scz_risk_genes, atrophy_map=atrophy_map,
+        method=method, n_perm=n_perm, seed=seed,
+    )
+    spatial_null = cortical_spin_null(
+        score_map=score_map_cortex, atrophy_map=atrophy_map,
+        lh_annot=lh_annot, rh_annot=rh_annot, n_perm=n_perm, seed=seed,
+    )
+
+    return {
+        "score_map_full": score_map_full,
+        "score_map_cortex": score_map_cortex,
+        "atrophy_map": atrophy_map,
+        "real_r": gs_null["real_r"],
+        "gene_set_null": gs_null,
+        "spatial_null": spatial_null,
+        "method": method,
+        "n_perm": n_perm,
+        "seed": seed,
+    }
+
+
+# No ENIGMA case-control map exists for Alzheimer's in enigmatoolbox==2.0.3 (confirmed:
+# 'alzheimers'/'ad' isn't in its valid disorder list). CLAUDE.md §7.5 fallback: a
+# defensible canonical vulnerable-region list. AD's target spans both cortex
+# (entorhinal) and subcortex (hippocampus, amygdala) — mixing compartments that no
+# bundled null tool (spin test = cortex-only; burt2020/brainsmash = built for one
+# geometric domain) cleanly supports together. See validate_ad's docstring for how
+# this is handled and its limitation.
+AD_CANONICAL_VULNERABLE_LABELS = {"entorhinal", "hippocampus", "amygdala"}
+
+
+def ad_vulnerable_region_indicator(atlas_info: pd.DataFrame) -> pd.Series:
+    """Binary indicator (1 = canonically AD-vulnerable, 0 = not), indexed by
+    atlas region id, for all 83 DK regions."""
+    ind = atlas_info["label"].isin(AD_CANONICAL_VULNERABLE_LABELS).astype(float)
+    return pd.Series(ind.to_numpy(), index=atlas_info["id"], name="vulnerable")
+
+
+def validate_ad(
+    expression: pd.DataFrame,
+    ad_risk_genes: list[str],
+    atlas_info: pd.DataFrame,
+    coords: pd.DataFrame,
+    method: str = "mean",
+    n_perm: int = 10000,
+    seed: int = 1234,
+) -> dict:
+    """Fallback validation for Alzheimer's (no ENIGMA ground-truth map, see
+    module-level note above): tests whether the AD score map is elevated in
+    the canonical vulnerable ROI set (entorhinal, hippocampus, amygdala,
+    bilateral) versus the rest of the brain.
+
+    Two results, both reported, with different rigor:
+    1. PRIMARY — gene-set null only. Compares the real correlation between
+       score and ROI-membership against `n_perm` random gene sets of the same
+       size. Well-posed regardless of spatial domain mixing, since the ROI
+       set itself is held fixed (not spatially permuted).
+    2. SECONDARY / APPROXIMATE — a whole-brain (83-region) variogram null via
+       brainsmash, treating cortical region centroids the same way as
+       subcortical ones (raw 3D Euclidean distance). This is a coarser
+       approximation than the surface-geodesic spin test used for pure
+       cortical targets (SCZ) — cortex isn't well modeled by 3D centroid
+       distance — but no bundled tool handles a single null spanning both
+       compartments. Flagged as a limitation, not hidden (CLAUDE.md rule 6).
+    """
+    indicator = ad_vulnerable_region_indicator(atlas_info)
+    score_map_full = region_score(expression, ad_risk_genes, method=method)
+
+    gs_null = gene_set_null(
+        expression=expression, real_gene_set=ad_risk_genes, atrophy_map=indicator,
+        method=method, n_perm=n_perm, seed=seed,
+    )
+    approx_spatial_null = subcortical_variogram_null(
+        score_map=score_map_full, atrophy_map=indicator, coords=coords,
+        n_perm=n_perm, seed=seed,
+    )
+
+    return {
+        "score_map_full": score_map_full,
+        "vulnerable_indicator": indicator,
+        "real_r": gs_null["real_r"],
+        "gene_set_null": gs_null,
+        "approx_whole_brain_spatial_null": approx_spatial_null,
+        "method": method,
+        "n_perm": n_perm,
+        "seed": seed,
+    }

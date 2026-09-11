@@ -157,6 +157,11 @@ def cortical_spin_null(
         x, atlas="fsaverage", density=density,
         parcellation=(lh_annot, rh_annot), n_perm=n_perm, seed=seed,
     )
-    real_r, p_value = stats.compare_images(x, y, nulls=rotated, metric="pearsonr")
+    real_r, p_value, null_r = stats.compare_images(
+        x, y, nulls=rotated, metric="pearsonr", return_nulls=True,
+    )
 
-    return {"real_r": real_r, "p_value": p_value, "n_perm": n_perm, "n_regions": len(common)}
+    return {
+        "real_r": real_r, "null_r": null_r, "p_value": p_value,
+        "n_perm": n_perm, "n_regions": len(common),
+    }
