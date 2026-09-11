@@ -30,6 +30,11 @@
 
   --font-sans: "Geist Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Frontend.md §11: "≥1200px = full workstation." Tailwind's default `xl`
+   * (1280px) doesn't match the spec's exact number, so a custom breakpoint
+   * gets it right instead of approximating. */
+  --breakpoint-wide: 1200px;
 }
 
 html,
