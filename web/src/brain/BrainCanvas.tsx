@@ -92,6 +92,7 @@ export default function BrainCanvas({ data, regionIndex, onNiivueError }: Props)
   const opacity = useAppStore((s) => s.opacity);
   const surface = useAppStore((s) => s.surface);
   const viewPreset = useAppStore((s) => s.viewPreset);
+  const hemisphere = useAppStore((s) => s.hemisphere);
   const setHoveredRegion = useAppStore((s) => s.setHoveredRegion);
   const setPinnedRegion = useAppStore((s) => s.setPinnedRegion);
 
@@ -150,17 +151,16 @@ export default function BrainCanvas({ data, regionIndex, onNiivueError }: Props)
 
     const meshPaths = surface === "pial" ? data.assets.mesh_pial : data.assets.mesh_inflated;
     const atlasPaths = data.assets.atlas_labels;
-    const overlayPaths =
-      overlayMode === "atrophy" ? data.assets.overlays[disease].atrophy : data.assets.overlays[disease].signature;
+    const overlayPaths = data.assets.overlays[disease][overlayMode];
 
     if (!overlayPaths) {
-      // AD has no atrophy overlay (Frontend.md §16 / CLAUDE.md §16) — caller
-      // (OverlayToggle) should already prevent selecting "atrophy" for AD,
-      // this is a defensive no-op rather than a crash.
+      // AD has no atrophy/diff overlay (no continuous ENIGMA ground truth —
+      // CLAUDE.md §16) — caller (OverlayToggle) should already prevent
+      // selecting those modes for AD; this is a defensive no-op, not a crash.
       return;
     }
 
-    const domain = data.colormaps[overlayMode === "atrophy" ? "atrophy" : "signature"].domain;
+    const domain = data.colormaps[overlayMode].domain;
 
     let cancelled = false;
     nv.loadMeshes([
@@ -170,7 +170,7 @@ export default function BrainCanvas({ data, regionIndex, onNiivueError }: Props)
         layers: [
           meshLayer({ url: atlasPaths[0], name: "atlas", colormap: "actc", opacity: 0.25, cal_max: 83 }),
           meshLayer({
-            url: overlayPaths[0], name: "signature", colormap: DIVERGING_COLORMAP_NAME,
+            url: overlayPaths[0], name: "overlay", colormap: DIVERGING_COLORMAP_NAME,
             cal_min: domain[0], cal_max: domain[1], opacity, colorbarVisible: false,
           }),
         ],
@@ -181,7 +181,7 @@ export default function BrainCanvas({ data, regionIndex, onNiivueError }: Props)
         layers: [
           meshLayer({ url: atlasPaths[1], name: "atlas", colormap: "actc", opacity: 0.25, cal_max: 83 }),
           meshLayer({
-            url: overlayPaths[1], name: "signature", colormap: DIVERGING_COLORMAP_NAME,
+            url: overlayPaths[1], name: "overlay", colormap: DIVERGING_COLORMAP_NAME,
             cal_min: domain[0], cal_max: domain[1], opacity, colorbarVisible: false,
           }),
         ],
@@ -204,6 +204,28 @@ export default function BrainCanvas({ data, regionIndex, onNiivueError }: Props)
     const { azimuth, elevation } = VIEW_PRESETS[viewPreset];
     nv.setRenderAzimuthElevation(azimuth, elevation);
   }, [ready, viewPreset]);
+
+  // Hemisphere visibility. Depends on `disease`/`overlayMode`/`surface` too
+  // since those trigger a mesh reload (new mesh objects, new ids) — without
+  // that dependency this could try to set visibility on stale/reloaded mesh
+  // ids from before the reload finished.
+  useEffect(() => {
+    const nv = nvRef.current;
+    if (!nv || !ready) return;
+    // Direct property mutation, not setMeshProperty(id, ...) -- that
+    // setter's `id` param is typed `number` while NVMesh.id is a string
+    // (confirmed via tsc, not assumed), and it's unclear whether that id is
+    // even numeric-coercible. `visible` is a plain NVMesh instance field, so
+    // mutating it directly and forcing a redraw sidesteps the mismatch.
+    for (const mesh of nv.meshes) {
+      if (mesh.name === "cortex-lh") {
+        mesh.visible = hemisphere !== "right";
+      } else if (mesh.name === "cortex-rh") {
+        mesh.visible = hemisphere !== "left";
+      }
+    }
+    nv.updateGLVolume();
+  }, [ready, hemisphere, disease, overlayMode, surface]);
 
   return <canvas ref={canvasRef} className="h-full w-full" aria-label="3D brain viewer" />;
 }

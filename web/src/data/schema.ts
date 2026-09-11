@@ -10,6 +10,7 @@ export interface Region {
   structure: "cortical" | "subcortical";
   signature: number;
   atrophy: number | null;
+  diff: number | null; // signature - atrophy, only where atrophy exists
 }
 
 export interface Validation {
@@ -60,13 +61,16 @@ export interface Assets {
   mesh_inflated: [string, string];
   atlas_labels: [string, string];
   region_index: string;
-  overlays: Record<DiseaseCode, { signature: [string, string]; atrophy: [string, string] | null }>;
+  overlays: Record<
+    DiseaseCode,
+    { signature: [string, string]; atrophy: [string, string] | null; diff: [string, string] | null }
+  >;
   fallback_2d: Record<DiseaseCode, string>;
 }
 
 export interface SignatureData {
   meta: { atlas: string; n_regions: number; generated: string };
-  colormaps: { signature: ColormapSpec; atrophy: ColormapSpec };
+  colormaps: { signature: ColormapSpec; atrophy: ColormapSpec; diff: ColormapSpec };
   diseases: Record<DiseaseCode, DiseasePayload>;
   specificity: Specificity;
   assets: Assets;

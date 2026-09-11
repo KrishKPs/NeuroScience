@@ -146,8 +146,26 @@ def export_disease_overlays(save: bool = True) -> None:
             _write_gifti_shape(lh_v, WEB_ASSETS / f"overlay_atrophy_{code}_lh.gii")
             _write_gifti_shape(rh_v, WEB_ASSETS / f"overlay_atrophy_{code}_rh.gii")
 
+    # "diff" overlay (signature - atrophy) — only meaningful where atrophy
+    # ground truth exists (PD, SCZ), and only at the vertices where BOTH are
+    # defined (subcortical proxy regions for PD, all cortex for SCZ) — other
+    # vertices get 0, same "no data here" convention as the signature/atrophy
+    # overlays already use for background/medial-wall vertices.
+    for disease, path in atrophy_paths.items():
+        code = DISEASE_CODES[disease].lower()
+        prefix = DISEASE_PREFIX[disease]
+        score = pd.read_csv(PROCESSED / f"{prefix}_score_map_full.csv", index_col=0)["score"]
+        atrophy = pd.read_csv(path, index_col=0)["atrophy_d"]
+        diff = (score - atrophy).dropna()
+        lh_v, rh_v = project_scores_to_surface(diff, lh_annot, rh_annot)
+        lh_v = np.nan_to_num(lh_v, nan=0.0)
+        rh_v = np.nan_to_num(rh_v, nan=0.0)
+        if save:
+            _write_gifti_shape(lh_v, WEB_ASSETS / f"overlay_diff_{code}_lh.gii")
+            _write_gifti_shape(rh_v, WEB_ASSETS / f"overlay_diff_{code}_rh.gii")
+
     if save:
-        print(f"Saved disease overlay GIfTI files (6 signature + 4 atrophy) to {WEB_ASSETS}")
+        print(f"Saved disease overlay GIfTI files (6 signature + 4 atrophy + 4 diff) to {WEB_ASSETS}")
 
 
 def build_region_index(atlas_info: pd.DataFrame) -> dict:
@@ -187,13 +205,16 @@ def build_disease_payload(
     regions = []
     for _, row in atlas_info.iterrows():
         rid = int(row["id"])
+        sig = float(score.get(rid, float("nan")))
+        atr = atrophy_by_id.get(rid)
         regions.append({
             "id": _region_string_id(row["hemisphere"], row["label"]),
             "name": _region_display_name(row["hemisphere"], row["label"]),
             "hemi": row["hemisphere"],
             "structure": "cortical" if row["structure"] == "cortex" else "subcortical",
-            "signature": float(score.get(rid, float("nan"))),
-            "atrophy": atrophy_by_id.get(rid),  # None (-> JSON null) where no ground truth exists
+            "signature": sig,
+            "atrophy": atr,  # None (-> JSON null) where no ground truth exists
+            "diff": (sig - atr) if atr is not None else None,  # only meaningful where atrophy exists
         })
 
     with open(PROCESSED / f"{prefix}_validation_summary.json") as f:
@@ -273,11 +294,17 @@ def build_colormap_domains(diseases: dict) -> dict:
         (abs(r["atrophy"]) for d in diseases.values() for r in d["regions"] if r["atrophy"] is not None),
         default=0.1,
     )
+    max_diff = max(
+        (abs(r["diff"]) for d in diseases.values() for r in d["regions"] if r["diff"] is not None),
+        default=0.1,
+    )
     sig_domain = round(max_sig + 0.05, 1)
     atr_domain = round(max_atr + 0.05, 1)
+    diff_domain = round(max_diff + 0.05, 1)
     return {
         "signature": {"type": "diverging", "domain": [-sig_domain, sig_domain], "units": "mean z"},
         "atrophy": {"type": "diverging", "domain": [-atr_domain, atr_domain], "units": "Cohen's d"},
+        "diff": {"type": "diverging", "domain": [-diff_domain, diff_domain], "units": "signature - atrophy"},
     }
 
 
@@ -317,6 +344,10 @@ def export_all(save: bool = True) -> dict:
             "signature": [f"/assets/overlay_signature_{code.lower()}_lh.gii", f"/assets/overlay_signature_{code.lower()}_rh.gii"],
             "atrophy": (
                 [f"/assets/overlay_atrophy_{code.lower()}_lh.gii", f"/assets/overlay_atrophy_{code.lower()}_rh.gii"]
+                if has_atrophy_overlay[code] else None
+            ),
+            "diff": (
+                [f"/assets/overlay_diff_{code.lower()}_lh.gii", f"/assets/overlay_diff_{code.lower()}_rh.gii"]
                 if has_atrophy_overlay[code] else None
             ),
         }
