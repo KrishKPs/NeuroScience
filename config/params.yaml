@@ -1,0 +1,60 @@
+# Central config for neuro-signatures.
+# All tunables live here per CLAUDE.md §11 — never hard-code these in src/.
+
+seed: 1234
+
+atlas:
+  name: desikan_killiany
+  n_regions: 83  # 68 cortical (34/hemisphere) + 15 subcortical/aseg + brainstem
+
+abagen:
+  ibf_threshold: 0.5
+  probe_selection: diff_stability
+  lr_mirror: bidirectional
+  missing: centroids
+  gene_norm: srs
+  return_donors: false
+
+gwas:
+  pvalue_threshold: 5.0e-8
+  source: "GWAS Catalog REST API (ebi.ac.uk/gwas)"
+
+nulls:
+  gene_set_n_perm: 10000
+  spatial_n_perm: 10000
+
+primary_disease: parkinsons
+
+diseases:
+  parkinsons:
+    label: "Parkinson's disease"
+    # EFO_0002508 is OBSOLETE (verified 2026-09-11 against ebi.ac.uk/ols4;
+    # term_replaced_by -> MONDO_0005180). GWAS Catalog associations live under
+    # MONDO_0005180, not EFO_0002508. See CLAUDE.md §16.
+    efo_id: MONDO_0005180
+    efo_id_deprecated: EFO_0002508
+    target_regions_dk: null  # substantia nigra not in DK
+    proxy_regions_dk: [caudate, putamen, pallidum]  # bilateral, basal-ganglia proxy
+    is_cortical_target: false  # subcortical proxy -> use burt2020 variogram null, NOT spin test
+    enigma_dataset: parkinsons
+  schizophrenia:
+    label: "Schizophrenia"
+    # EFO_0000692 is OBSOLETE (verified 2026-09-11 against ebi.ac.uk/ols4;
+    # term_replaced_by -> MONDO_0005090). Confirmed populated in GWAS Catalog.
+    efo_id: MONDO_0005090
+    efo_id_deprecated: EFO_0000692
+    target_regions_dk: [frontal, temporal]  # cortical
+    is_cortical_target: true  # -> spin test (alexander_bloch)
+    enigma_dataset: schizophrenia
+  alzheimers:
+    label: "Alzheimer's disease"
+    # EFO_0000249 is OBSOLETE (verified 2026-09-11 against ebi.ac.uk/ols4;
+    # term_replaced_by -> MONDO_0004975). Confirmed populated in GWAS Catalog.
+    efo_id: MONDO_0004975
+    efo_id_deprecated: EFO_0000249
+    target_regions_dk: [entorhinal, hippocampus]
+    is_cortical_target: null  # entorhinal is cortical, hippocampus is not — handle separately
+    enigma_dataset: null  # no ENIGMA AD map confirmed yet; fallback = canonical region list (§7.5)
+
+scoring:
+  method: mean  # robustness check against 'median' in Week 3, per §7.3

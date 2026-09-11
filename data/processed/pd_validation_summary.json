@@ -1,0 +1,13 @@
+{
+  "disease": "parkinsons",
+  "method": "mean",
+  "n_perm": 10000,
+  "seed": 1234,
+  "real_r_subcortex_n14": 0.7649831540006367,
+  "basal_ganglia_proxy_r_n6_descriptive_only": 0.5535746659436808,
+  "gene_set_null_p": 0.04179582041795821,
+  "gene_set_null_gene_set_size": 149,
+  "spatial_null_p": 0.0007999200079992001,
+  "spatial_null_type": "burt2020_variogram_subcortex_n14",
+  "n_regions": 14
+}

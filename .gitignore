@@ -1,0 +1,16 @@
+# Raw data (large, re-downloadable — see README for provenance/re-download steps)
+data/raw/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+*.egg-info/
+.pytest_cache/
+
+# Env
+.venv/
+venv/
+
+# OS
+.DS_Store
