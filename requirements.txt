@@ -15,6 +15,7 @@ setuptools<81
 pandas==1.5.3
 
 numpy==1.26.4
+nibabel==5.4.2  # imported directly in src/data_load.py and src/figures.py, not just a transitive dep
 scipy==1.17.1
 statsmodels==0.15.0
 scikit-learn==1.9.1
