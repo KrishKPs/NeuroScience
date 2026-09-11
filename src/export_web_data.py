@@ -11,10 +11,12 @@ import json
 import shutil
 from pathlib import Path
 
+import nibabel as nib
+import numpy as np
 import pandas as pd
 
 from src.data_load import fetch_dk_atlas
-from src.figures import plot_2d_fallback_schematic
+from src.figures import plot_2d_fallback_schematic, project_scores_to_surface
 from src.harmonize import reconcile_genes
 from src.score import zscore_genes
 
@@ -87,6 +89,65 @@ def prepare_mesh_assets(save: bool = True) -> dict:
         print(f"Saved {len(sources) + len(inflated_sources)} mesh/atlas assets to {WEB_ASSETS}")
 
     return {"pial": sources, "inflated": inflated_sources}
+
+
+def _write_gifti_shape(values: np.ndarray, save_path: Path) -> None:
+    """Vertex-level scalar array -> a standard GIfTI functional/shape file
+    (NIFTI_INTENT_SHAPE), the well-documented way to feed NiiVue a
+    statistical overlay (mesh layer `url`). Verified round-trip correct via
+    nibabel write + read-back (2026-09-11) before trusting it here — chosen
+    over trying to mutate an already-loaded NiiVue mesh layer's `values` in
+    place client-side, which the library's public API doesn't clearly
+    document a supported way to do (Frontend.md §16).
+    """
+    darr = nib.gifti.GiftiDataArray(
+        values.astype(np.float32), intent="NIFTI_INTENT_SHAPE", datatype="NIFTI_TYPE_FLOAT32",
+    )
+    nib.gifti.GiftiImage(darrays=[darr]).to_filename(str(save_path))
+
+
+def export_disease_overlays(save: bool = True) -> None:
+    """Per-disease, per-hemisphere GIfTI overlay files for both the
+    signature (all 3 diseases) and atrophy (PD, SCZ only — AD has no
+    continuous ENIGMA ground truth) data layers. Reuses
+    figures.project_scores_to_surface — the exact function already
+    validated for the static hero figure and the 2D fallback schematics —
+    so the interactive overlay, the static figures, and the fallback PNGs
+    are all guaranteed pixel-consistent with each other, not three separate
+    implementations that could silently drift.
+    """
+    atlas_surf = fetch_dk_atlas(surface=True)
+    lh_annot, rh_annot = atlas_surf["image"]
+
+    if save:
+        WEB_ASSETS.mkdir(parents=True, exist_ok=True)
+
+    for disease, prefix in DISEASE_PREFIX.items():
+        code = DISEASE_CODES[disease].lower()
+        score = pd.read_csv(PROCESSED / f"{prefix}_score_map_full.csv", index_col=0)["score"]
+        lh_v, rh_v = project_scores_to_surface(score, lh_annot, rh_annot)
+        lh_v = np.nan_to_num(lh_v, nan=0.0)
+        rh_v = np.nan_to_num(rh_v, nan=0.0)
+        if save:
+            _write_gifti_shape(lh_v, WEB_ASSETS / f"overlay_signature_{code}_lh.gii")
+            _write_gifti_shape(rh_v, WEB_ASSETS / f"overlay_signature_{code}_rh.gii")
+
+    atrophy_paths = {
+        "parkinsons": PROCESSED / "pd_subcortex_atrophy_map.csv",
+        "schizophrenia": PROCESSED / "scz_cortex_atrophy_map.csv",
+    }
+    for disease, path in atrophy_paths.items():
+        code = DISEASE_CODES[disease].lower()
+        atrophy = pd.read_csv(path, index_col=0)["atrophy_d"]
+        lh_v, rh_v = project_scores_to_surface(atrophy, lh_annot, rh_annot)
+        lh_v = np.nan_to_num(lh_v, nan=0.0)
+        rh_v = np.nan_to_num(rh_v, nan=0.0)
+        if save:
+            _write_gifti_shape(lh_v, WEB_ASSETS / f"overlay_atrophy_{code}_lh.gii")
+            _write_gifti_shape(rh_v, WEB_ASSETS / f"overlay_atrophy_{code}_rh.gii")
+
+    if save:
+        print(f"Saved disease overlay GIfTI files (6 signature + 4 atrophy) to {WEB_ASSETS}")
 
 
 def build_region_index(atlas_info: pd.DataFrame) -> dict:
@@ -250,6 +311,18 @@ def export_all(save: bool = True) -> dict:
 
     colormaps = build_colormap_domains(diseases)
 
+    has_atrophy_overlay = {"PD": True, "SCZ": True, "AD": False}
+    overlays = {
+        code: {
+            "signature": [f"/assets/overlay_signature_{code.lower()}_lh.gii", f"/assets/overlay_signature_{code.lower()}_rh.gii"],
+            "atrophy": (
+                [f"/assets/overlay_atrophy_{code.lower()}_lh.gii", f"/assets/overlay_atrophy_{code.lower()}_rh.gii"]
+                if has_atrophy_overlay[code] else None
+            ),
+        }
+        for code in ["PD", "SCZ", "AD"]
+    }
+
     payload = {
         "meta": {"atlas": "desikan-killiany", "n_regions": len(atlas_info), "generated": "2026-09-11"},
         "colormaps": colormaps,
@@ -260,6 +333,7 @@ def export_all(save: bool = True) -> dict:
             "mesh_inflated": ["/assets/dk_inflated_lh.gii", "/assets/dk_inflated_rh.gii"],
             "atlas_labels": ["/assets/dk_labels_lh.gii", "/assets/dk_labels_rh.gii"],
             "region_index": "/assets/dk_region_index.json",
+            "overlays": overlays,
             "fallback_2d": {
                 "PD": "/assets/fallback_pd.png",
                 "SCZ": "/assets/fallback_scz.png",
@@ -280,6 +354,7 @@ def export_all(save: bool = True) -> dict:
         print(f"Saved signature.json ({len(atlas_info)} regions x 3 diseases) and dk_region_index.json")
 
     prepare_mesh_assets(save=save)
+    export_disease_overlays(save=save)
     export_fallback_schematics(sig_domain=colormaps["signature"]["domain"][1], save=save)
 
     return {"signature": payload, "region_index": region_index}
