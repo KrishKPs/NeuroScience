@@ -1,4 +1,4 @@
-"""Cheap sanity checks per CLAUDE.md §11. Data-dependent tests skip cleanly
+"""Cheap sanity checks. Data-dependent tests skip cleanly
 when their input file hasn't been generated yet (run the relevant src/
 pipeline step first) rather than failing.
 """
@@ -132,8 +132,8 @@ def test_specificity_matrix_diagonal_present():
     matrix = pd.read_csv(path, index_col=0)
     assert matrix.shape == (3, 3)
     # PD and SCZ have real continuous atrophy ground truth — diagonal should be
-    # their row's strongest correlation (H3, §7.6). AD uses a weaker fallback
-    # ROI indicator and was not significant under either null (§16), so its
+    # their row's strongest correlation (H3). AD uses a weaker fallback
+    # ROI indicator and was not significant under either null, so its
     # diagonal is NOT asserted to be strongest — that's an honest finding, not
     # a bug (see docs/writeup.md limitations).
     for disease in ["parkinsons", "schizophrenia"]:

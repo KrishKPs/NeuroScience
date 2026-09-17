@@ -20,7 +20,7 @@ function SegButton<T extends string>({ value, active, onClick, children }: { val
   );
 }
 
-/** Frontend.md §5.3/§6 left rail — overlay/opacity/hemisphere/surface/view
+/** Left rail — overlay/opacity/hemisphere/surface/view
  * controls. AD has no atrophy/diff overlay (no continuous ENIGMA ground
  * truth), so those two options are disabled rather than hidden when AD is
  * selected — a visible, explained constraint beats a control that silently

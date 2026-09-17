@@ -1,4 +1,4 @@
-"""Regional expression score — the disease "signature map". See CLAUDE.md §7.3.
+"""Regional expression score — the disease "signature map".
 
 score[region] = mean (or median) over the disease gene set of z(expr[region, gene]),
 where each gene is z-scored across regions first so genes with different

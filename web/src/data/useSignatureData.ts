@@ -6,7 +6,7 @@ type LoadState =
   | { status: "error"; message: string }
   | { status: "ready"; data: SignatureData; regionIndex: RegionIndex };
 
-/** Fetch + schema-sanity-check the §9 JSON (Frontend.md §12 "bad/missing
+/** Fetch + schema-sanity-check the signature JSON ("bad/missing
  * data" state: a direction-giving error, not a raw fetch exception). */
 export function useSignatureData(): LoadState {
   const [state, setState] = useState<LoadState>({ status: "loading" });

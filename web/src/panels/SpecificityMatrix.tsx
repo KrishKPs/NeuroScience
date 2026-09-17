@@ -12,7 +12,7 @@ interface Props {
 const CELL = 44;
 const LABEL_W = 46;
 
-/** Frontend.md §6.4 — 3x3 heatmap, visx. "The diagonal being strongest is
+/** 3x3 heatmap, visx. "The diagonal being strongest is
  * the headline" — diagonal cells get a subtle ring. Hovering a cell
  * highlights its row/col; the selected disease's row is echoed via a
  * slightly brighter background even without hover, so the connection to

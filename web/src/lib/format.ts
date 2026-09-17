@@ -1,4 +1,4 @@
-/** Tabular-figure number formatting (Frontend.md §3.5 — "critical for a
+/** Tabular-figure number formatting ("critical for a
  * data panel" that columns of values align). */
 export function fmtNum(v: number, decimals = 2): string {
   return v.toFixed(decimals);

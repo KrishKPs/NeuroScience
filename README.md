@@ -6,8 +6,8 @@ signature predicts where it actually causes atrophy — with spatial null models
 controlling for spatial autocorrelation.
 
 **Status:** trio (Parkinson's, schizophrenia, Alzheimer's) built and validated
-end-to-end, Weeks 1-6 of the roadmap complete. See `CLAUDE.md` for the full spec,
-methodology, and decision log, and `docs/writeup.md` for the narrative writeup.
+end-to-end, Weeks 1-6 of the roadmap complete. See `docs/writeup.md` for the
+narrative writeup.
 
 Not novel research — a clean, rigorous, well-told reproduction + cross-disease
 comparison in imaging transcriptomics. Association, not causation.
@@ -47,8 +47,7 @@ up, install it directly:
 pip install "git+https://github.com/MICA-MNI/ENIGMA.git"
 ```
 
-**Known install gotchas** (all pinned in `requirements.txt`, all logged in detail
-in `CLAUDE.md` §16):
+**Known install gotchas** (all pinned in `requirements.txt`):
 - `abagen`'s mouse submodule imports `pkg_resources`, which `setuptools>=81`
   removed — pin `setuptools<81`.
 - `abagen==0.1.3` (unmaintained past this version) calls two pandas APIs that
@@ -78,7 +77,7 @@ pytest tests/
 |---|---|---|---|
 | Allen Human Brain Atlas | Region x gene expression, DK-parcellated (83 x 15,633) | 2026-09-11 | via `abagen.get_expression_data`; 6 donor brains, mostly left hemisphere, microarray. Cached in `data/raw/abagen-data/` (gitignored — re-downloads on first run). |
 | GWAS Catalog (ebi.ac.uk/gwas) | Disease risk genes, p<=5e-8 | 2026-09-11 | REST API, per-trait associations. **All three commonly-cited trait ids in this project's spec were stale** — `EFO_0002508` (PD), `EFO_0000692` (SCZ), `EFO_0000249` (AD) are all obsolete in current EFO; verified live replacements `MONDO_0005180`/`MONDO_0005090`/`MONDO_0004975` against `ebi.ac.uk/ols4` before use. Gene-symbol reconciliation against the AHBA matrix: PD 149/202 (73.8%), SCZ 913/1449 (63.0%), AD 164/254 (64.6%). |
-| ENIGMA Toolbox | Case-control Cohen's d atrophy maps, DK-parcellated | 2026-09-11 | via `enigmatoolbox.datasets.load_summary_stats`. PD target (substantia nigra) isn't in DK, so validation uses a basal-ganglia-proxy-derived subcortical set. `load_summary_stats('schizophrenia')` has an upstream filename-typo bug (crashes on `Schizophrenia_case-controls_SubVol.csv`, which doesn't exist); bypassed via a direct loader reading the package's correctly-named `scz_case-controls_*.csv` files (`src/data_load.load_enigma_schizophrenia_atrophy`). No Alzheimer's map exists in this package at all — AD validation uses the CLAUDE.md §7.5 fallback (canonical vulnerable-region list: entorhinal, hippocampus, amygdala). |
+| ENIGMA Toolbox | Case-control Cohen's d atrophy maps, DK-parcellated | 2026-09-11 | via `enigmatoolbox.datasets.load_summary_stats`. PD target (substantia nigra) isn't in DK, so validation uses a basal-ganglia-proxy-derived subcortical set. `load_summary_stats('schizophrenia')` has an upstream filename-typo bug (crashes on `Schizophrenia_case-controls_SubVol.csv`, which doesn't exist); bypassed via a direct loader reading the package's correctly-named `scz_case-controls_*.csv` files (`src/data_load.load_enigma_schizophrenia_atrophy`). No Alzheimer's map exists in this package at all — AD validation uses a fallback (canonical vulnerable-region list: entorhinal, hippocampus, amygdala). |
 
 Re-download: delete `data/raw/` and re-run `run_pipeline.py` — everything under
 `data/raw/` and `data/interim/` is reconstructed from source, nothing there is
@@ -86,14 +85,26 @@ hand-edited.
 
 ## Repository structure
 
-See CLAUDE.md §9 for the full layout and rationale. Analysis logic lives in
+```
+config/params.yaml    every tunable (seed, permutations, trait IDs)
+src/                  analysis: data_load, harmonize, score, nulls, validate,
+                      specificity, model, figures, export_web_data
+run_pipeline.py       one-command end-to-end reproduction
+data/interim|processed  intermediate and final data (data/raw is re-downloaded)
+results/              figures and tables
+docs/writeup.md       narrative writeup
+tests/                sanity tests
+web/                  React + NiiVue 3D brain viewer
+```
+
+Analysis logic lives in
 `src/`; `run_pipeline.py` orchestrates it end-to-end; notebooks (if added) only
 narrate and import from `src/`, never duplicate its logic.
 
 ## Reproducibility
 
 Global seed `1234`, 10,000 permutations for both null models, all tunables in
-`config/params.yaml`. See CLAUDE.md §11.
+`config/params.yaml`.
 
 ## Limitations
 
@@ -102,7 +113,7 @@ Global seed `1234`, 10,000 permutations for both null models, all tunables in
 - **PD's target isn't in the DK atlas.** Substantia nigra has no DK region, so
   validation uses a basal-ganglia proxy (caudate/putamen/pallidum), extended to a
   14-structure subcortical set so the spatial null has enough spatial points to
-  fit a variogram at all (see CLAUDE.md §16) — a real methodological compromise,
+  fit a variogram at all — a real methodological compromise,
   not just a caveat in a sentence.
 - **AD has no continuous ENIGMA ground truth** in this toolbox. Its result rests
   on a coarser fallback (fixed ROI list, a whole-brain variogram null that treats

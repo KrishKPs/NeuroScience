@@ -13,12 +13,12 @@ import SpecificityMatrix from "./panels/SpecificityMatrix";
 import ValidationScatter from "./panels/ValidationScatter";
 import Colorbar from "./ui/Colorbar";
 
-/** Frontend.md §11 responsive rule: "≥1200px = full workstation. Tablet =
+/** Responsive rule: "≥1200px = full workstation. Tablet =
  * brain on top, panels stack below, scatter last. Mobile = brain + disease
  * switch + a swipeable panel stack." Below the `wide` (1200px) breakpoint
  * this renders a single scrollable column in that same top-to-bottom order
- * instead of a true swipeable carousel — a documented simplification
- * (Frontend.md §16), not a silent gap: a scrollable stack keeps every
+ * instead of a true swipeable carousel — a documented simplification,
+ * not a silent gap: a scrollable stack keeps every
  * panel fully functional on mobile, a carousel gesture layer would be a
  * materially bigger feature on its own.
  */
@@ -58,7 +58,7 @@ export default function App() {
             onNiivueError={(msg) => console.error("NiiVue error:", msg)}
           />
           <Colorbar domain={colormap.domain} units={colormap.units} />
-          {/* Text alternative for the WebGL canvas (§11 a11y) — screen
+          {/* Text alternative for the WebGL canvas — screen
               readers get the same information the visual colorbar carries. */}
           <p className="sr-only" aria-live="polite">
             Showing {data.diseases[selectedDisease].label} {overlayMode} on the 3D brain, colored from{" "}
@@ -78,7 +78,7 @@ export default function App() {
         <DiseaseSelector data={data} />
       </header>
 
-      {/* Brain first on narrow screens (§11: "brain on top"); reordered into
+      {/* Brain first on narrow screens ("brain on top"); reordered into
           the center column on wide screens via `wide:order-none` + grid
           placement. */}
       <div className="wide:order-none wide:col-start-2 wide:row-start-2 wide:overflow-hidden">{brain}</div>

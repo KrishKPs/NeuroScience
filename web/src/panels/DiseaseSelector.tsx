@@ -7,7 +7,7 @@ interface Props {
   data: SignatureData;
 }
 
-/** Frontend.md §6.1 — the global driver. A proper radio group (§11 a11y:
+/** The global driver. A proper radio group (a11y:
  * "segmented control is a proper radio group"), arrow keys move selection. */
 export default function DiseaseSelector({ data }: Props) {
   const selected = useAppStore((s) => s.selectedDisease);

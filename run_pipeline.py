@@ -1,5 +1,5 @@
 """One-command pipeline: regenerates all processed data / figures from raw
-inputs. See CLAUDE.md §8 (deliverable 5) and §11 ("one-command reproduce").
+inputs.
 Grows week by week; each `run_weekN_*` function is independently callable.
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ RESULTS_TABLES = PROJECT_ROOT / "results" / "tables"
 
 def run_week3_pd_validation(save: bool = True) -> dict:
     """Score map + BOTH null models for the primary disease (Parkinson's).
-    CLAUDE.md §7.3/§7.4 — the hard gate before Week 4 starts.
+    the hard gate before Week 4 starts.
     """
     cfg = load_config()
     seed = cfg["seed"]
@@ -82,7 +82,7 @@ def run_week3_pd_validation(save: bool = True) -> dict:
 
 def run_week4_scz_validation(save: bool = True) -> dict:
     """Score map + gene-set null + cortical spin test for schizophrenia.
-    CLAUDE.md §7.3/§7.4b (cortical target -> spin test).
+    Cortical target -> spin test.
     """
     cfg = load_config()
     seed = cfg["seed"]
@@ -135,7 +135,7 @@ def run_week4_scz_validation(save: bool = True) -> dict:
 
 def run_week4_ad_validation(save: bool = True) -> dict:
     """Score map + fallback ROI-based validation for Alzheimer's (no ENIGMA
-    ground truth available — see CLAUDE.md §16 / src/validate.py docstrings).
+    ground truth available — see src/validate.py docstrings).
     """
     cfg = load_config()
     seed = cfg["seed"]
@@ -176,7 +176,7 @@ def run_week4_ad_validation(save: bool = True) -> dict:
             "approx_spatial_null_p": float(result["approx_whole_brain_spatial_null"]["p_value"]),
             "approx_spatial_null_type": "brainsmash_variogram_whole_brain_n83_APPROXIMATE",
             "n_regions": result["gene_set_null"]["n_regions"],
-            "note": "not significant at alpha=0.05 under either null; reported honestly (CLAUDE.md rule 6)",
+            "note": "not significant at alpha=0.05 under either null; reported honestly",
         }
         with open(PROCESSED / "ad_validation_summary.json", "w") as f:
             json.dump(summary, f, indent=2)
@@ -188,7 +188,7 @@ def run_week4_ad_validation(save: bool = True) -> dict:
 
 
 def run_week4_figures(pd_result: dict, scz_result: dict, ad_result: dict, save: bool = True) -> dict:
-    """Hero figure (3 signature maps) + specificity matrix (§7.6/§8)."""
+    """Hero figure (3 signature maps) + specificity matrix."""
     RESULTS_FIGURES.mkdir(parents=True, exist_ok=True)
     RESULTS_TABLES.mkdir(parents=True, exist_ok=True)
 
@@ -228,7 +228,7 @@ def run_week4_figures(pd_result: dict, scz_result: dict, ad_result: dict, save: 
 
 def run_week5_ml_layer(save: bool = True) -> dict:
     """ElasticNet regression predicting PD's whole-brain atrophy map from
-    regional expression (CLAUDE.md §7.7), plus GWAS-overlap check."""
+    regional expression, plus GWAS-overlap check."""
     cfg = load_config()
     seed = cfg["seed"]
 
@@ -266,7 +266,7 @@ def run_week5_ml_layer(save: bool = True) -> dict:
             "final_model_l1_ratio": result["final_model_l1_ratio"],
             "n_nonzero_genes": result["n_nonzero_genes"],
             "n_genes_overlapping_gwas": len(overlap),
-            "note": "83 samples (here 82) x ~15,600 features — exploratory/interpretability framing, not an accuracy claim (CLAUDE.md §7.7)",
+            "note": "83 samples (here 82) x ~15,600 features — exploratory/interpretability framing, not an accuracy claim",
         }
         with open(PROCESSED / "pd_ml_summary.json", "w") as f:
             json.dump(summary, f, indent=2)
@@ -280,7 +280,7 @@ def run_week5_ml_layer(save: bool = True) -> dict:
 
 
 def run_week5_validation_figures(pd_result: dict, scz_result: dict, save: bool = True) -> dict:
-    """Validation figure (§8 deliverable 3): score vs. ENIGMA atrophy scatter
+    """Validation figure: score vs. ENIGMA atrophy scatter
     with the spatial null's p-value annotated, for PD and SCZ (both have real
     continuous ENIGMA ground truth; AD's fallback ROI indicator isn't a
     continuous atrophy map, so it doesn't get this scatter)."""
@@ -314,7 +314,7 @@ def run_week5_validation_figures(pd_result: dict, scz_result: dict, save: bool =
 
 def run_week7_export_web_data(save: bool = True) -> dict:
     """Export the finished analysis to web/public/{data,assets}/ per the
-    frontend's data contract (src/Frontend.md §9/§13, CLAUDE.md §17).
+    frontend's data contract.
     Requires Weeks 3-5's outputs to already exist in data/processed/ and
     results/tables/."""
     result = export_web_data(save=save)

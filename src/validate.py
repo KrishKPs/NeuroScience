@@ -1,5 +1,5 @@
 """Validate a disease's expression score map against its ENIGMA atrophy ground
-truth (CLAUDE.md §7.5), running BOTH required null models (§7.4) — never
+truth, running BOTH required null models — never
 report a correlation without them.
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ SUBCORTICAL_LABEL_MAP = {
 }
 
 # The PD-specific hypothesis: substantia nigra isn't in DK, so we proxy it with the
-# basal ganglia (caudate/putamen/pallidum, bilateral). See CLAUDE.md §3/§16.
+# basal ganglia (caudate/putamen/pallidum, bilateral).
 PD_PROXY_LABELS = {"caudate", "putamen", "pallidum"}
 
 
@@ -34,11 +34,11 @@ def subcortical_atrophy_map(enigma_subvol_df: pd.DataFrame, atlas_info: pd.DataF
     atlas region id, matching the expression matrix's index.
 
     We validate across the FULL subcortex rather than only the 3-structure
-    basal-ganglia proxy because brainsmash's variogram fit (the spatial null,
-    §7.4b) needs more spatial points than N=6 can support — it errors
+    basal-ganglia proxy because brainsmash's variogram fit (the spatial null)
+    needs more spatial points than N=6 can support — it errors
     building its neighbor bins with a `ValueError: zero-size array` at N=6.
     N=14 is still small but usable. This is a deviation from a literal
-    "basal-ganglia-only" reading of CLAUDE.md §3 — logged in §16. The
+    "basal-ganglia-only" reading of the PD target, logged as a limitation. The
     basal-ganglia subset remains the specific hypothesis of interest and is
     reported separately as a descriptive (non-null-tested) number.
     """
@@ -78,7 +78,7 @@ def validate_pd(
     correlation against the full-subcortex ENIGMA atrophy map (N=14, needed
     for the spatial null to be well-posed — see subcortical_atrophy_map's
     docstring), gene-set null, and subcortical variogram null (PD's proxy is
-    subcortical -> NOT a spin test, see CLAUDE.md §7.4b / §16). Also reports
+    subcortical -> NOT a spin test). Also reports
     the basal-ganglia-only (N=6) correlation as a descriptive number, without
     its own null (too few points for brainsmash's variogram fit).
     """
@@ -121,7 +121,7 @@ def whole_brain_atrophy_map(
     """Combine a disease's cortical-thickness (68 regions) and subcortical-
     volume (14 regions) ENIGMA Cohen's d tables into one whole-brain atrophy
     map (82 of 83 DK regions — everything except brainstem, which ENIGMA
-    doesn't cover). Used for the ML layer (§7.7), whose "83 samples" framing
+    doesn't cover). Used for the ML layer, whose "83 samples" framing
     implies a whole-brain target, not the 14-region subcortical-only map used
     for PD's null-tested validation (validate_pd) or the 68-region
     cortical-only map used for SCZ's (validate_scz).
@@ -139,7 +139,7 @@ def cortical_atrophy_map(enigma_cortthick_df: pd.DataFrame, atlas_info: pd.DataF
     (`{hemisphere}_{label}`, e.g. 'L_bankssts') onto DK atlas region ids for
     all 68 cortical regions. Returns Cohen's d (d_icv), indexed by atlas
     region id, matching the expression matrix's index. Used for
-    schizophrenia (cortical target -> spin test, CLAUDE.md §7.4b).
+    schizophrenia (cortical target -> spin test).
     """
     cortex = atlas_info[atlas_info["structure"] == "cortex"].copy()
     cortex["structure_name"] = cortex["hemisphere"] + "_" + cortex["label"]
@@ -172,13 +172,13 @@ def validate_scz(
     the ENIGMA cortical-thickness atrophy map (all 68 DK cortical regions),
     gene-set null, and the cortical spin test (Alexander-Bloch) — SCZ's
     target is fully cortical, so a spin test is the correct spatial null
-    here (unlike PD's subcortical proxy, see validate_pd / CLAUDE.md §7.4b).
+    here (unlike PD's subcortical proxy, see validate_pd).
 
     `lh_annot`/`rh_annot` must be DK surface GIFTI label files
     (abagen.fetch_desikan_killiany(surface=True)['image']); alexander_bloch's
     expected data order is cortex regions sorted by ascending atlas id (L
     1-34 then R 42-75) — verified against neuromaps' get_parcel_centroids
-    source, not assumed (CLAUDE.md §16). `region_score`/`atrophy_map` here
+    source, not assumed. `region_score`/`atrophy_map` here
     are naturally already in that order since atlas_info's `id` column sorts
     L-cortex (1-34) before R-cortex (42-75).
     """
@@ -210,7 +210,7 @@ def validate_scz(
 
 
 # No ENIGMA case-control map exists for Alzheimer's in enigmatoolbox==2.0.3 (confirmed:
-# 'alzheimers'/'ad' isn't in its valid disorder list). CLAUDE.md §7.5 fallback: a
+# 'alzheimers'/'ad' isn't in its valid disorder list). Fallback: a
 # defensible canonical vulnerable-region list. AD's target spans both cortex
 # (entorhinal) and subcortex (hippocampus, amygdala) — mixing compartments that no
 # bundled null tool (spin test = cortex-only; burt2020/brainsmash = built for one
@@ -251,7 +251,7 @@ def validate_ad(
        approximation than the surface-geodesic spin test used for pure
        cortical targets (SCZ) — cortex isn't well modeled by 3D centroid
        distance — but no bundled tool handles a single null spanning both
-       compartments. Flagged as a limitation, not hidden (CLAUDE.md rule 6).
+       compartments. Flagged as a limitation, not hidden.
     """
     indicator = ad_vulnerable_region_indicator(atlas_info)
     score_map_full = region_score(expression, ad_risk_genes, method=method)

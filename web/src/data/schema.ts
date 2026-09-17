@@ -1,4 +1,4 @@
-// Mirrors src/export_web_data.py's output exactly (Frontend.md §9). The UI
+// Mirrors src/export_web_data.py's output exactly. The UI
 // only ever consumes this — never computes stats itself (rule 5).
 
 export type DiseaseCode = "PD" | "SCZ" | "AD";

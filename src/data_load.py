@@ -1,5 +1,5 @@
 """Loaders for the three raw data sources: AHBA expression (abagen), GWAS Catalog
-risk genes, and ENIGMA Toolbox atrophy maps. See CLAUDE.md §7.1-7.2, §7.5.
+risk genes, and ENIGMA Toolbox atrophy maps.
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def fetch_dk_atlas(surface: bool = False):
     """Desikan-Killiany atlas (image + 83-region info table). Ships with abagen,
     no download required. `surface=True` returns DK surface GIFTI label files
     (lh, rh) instead of the volumetric image — needed for the cortical spin
-    test (CLAUDE.md §7.4b)."""
+    test."""
     return abagen.fetch_desikan_killiany(surface=surface)
 
 
@@ -185,7 +185,7 @@ def get_disease_risk_genes(efo_id: str, pvalue_threshold: float = 5e-8) -> pd.Da
 def get_region_centroids(atlas: dict | None = None) -> pd.DataFrame:
     """World-space (MNI) centroid coordinates for every DK atlas region, computed
     as the mean voxel coordinate (in world space) of each region's label in the
-    atlas volume. Needed for the subcortical variogram null (§7.4b) — there is
+    atlas volume. Needed for the subcortical variogram null — there is
     no surface to spin, so distances are computed directly in volume space.
 
     Returns a DataFrame indexed by region id (1-83) with columns
@@ -248,7 +248,7 @@ def load_enigma_schizophrenia_atrophy() -> dict[str, pd.DataFrame]:
     typo. The package separately ships a correctly-named, consistent
     'scz_case-controls_*.csv' set that the same function also loads before
     hitting the broken reference; we load those three directly and skip the
-    broken 'Schizo_*' duplicate entirely (CLAUDE.md §16).
+    broken 'Schizo_*' duplicate entirely.
     """
     import enigmatoolbox.datasets as eds
 

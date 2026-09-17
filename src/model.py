@@ -1,5 +1,5 @@
 """ElasticNet regression: predict regional atrophy from regional gene
-expression (CLAUDE.md §7.7). 83 (here ~82) samples x ~15,600 features is
+expression. 83 (here ~82) samples x ~15,600 features is
 *massively* wide — regularization is mandatory, and this is framed as
 exploratory + interpretability, not an accuracy race (a handful of dozens of
 samples cannot support a reliable accuracy claim). We always report
@@ -34,8 +34,8 @@ def run_elasticnet_cv(
     (each of 5 outer folds re-running its own inner grid search over ~15,600
     features took minutes) for the marginal rigor it buys — hyperparameter
     selection and performance estimation share folds here, which can be
-    mildly optimistic. Logged honestly (CLAUDE.md rule 6/§16), not hidden;
-    §7.7 already frames this whole layer as exploratory/interpretability, not
+    mildly optimistic. Logged honestly, not hidden;
+    The spec already frames this whole layer as exploratory/interpretability, not
     an accuracy claim, so this doesn't change the conclusions we draw from it.
     """
     from sklearn.linear_model import ElasticNet
@@ -92,7 +92,7 @@ def run_elasticnet_cv(
 
 def genes_overlapping_gwas(nonzero_genes: pd.Series, gwas_risk_genes: list[str]) -> pd.Series:
     """Which of the ElasticNet's non-zero-weight genes are also in the
-    disease's own GWAS risk-gene set — closes the loop back to biology (§7.7:
+    disease's own GWAS risk-gene set — closes the loop back to biology (
     "whether they overlap the GWAS risk set")."""
     overlap = set(nonzero_genes.index) & set(gwas_risk_genes)
     return nonzero_genes.loc[sorted(overlap)].sort_values(key=np.abs, ascending=False)

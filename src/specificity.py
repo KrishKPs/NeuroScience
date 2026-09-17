@@ -1,10 +1,10 @@
-"""Cross-disease specificity matrix (CLAUDE.md §7.6). H3 predicts each
+"""Cross-disease specificity matrix. H3 predicts each
 disease's expression signature best matches its OWN atrophy map — the
 diagonal should be strongest.
 
 Ground truth differs in kind per disease (PD: subcortical Cohen's d, SCZ:
 cortical Cohen's d, AD: binary canonical-ROI indicator — no continuous map
-exists, see CLAUDE.md §16), so cells are computed only where a score map and
+exists), so cells are computed only where a score map and
 an atrophy map share region ids; unmatched cells are NaN rather than forced
 to a number that would misrepresent a domain mismatch (e.g. PD's cortex-only
 score vs. AD's mixed-domain ROI indicator, where the shared region count is

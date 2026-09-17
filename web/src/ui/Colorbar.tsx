@@ -5,8 +5,8 @@ interface Props {
   units: string;
 }
 
-/** Frontend.md §5.3 — "Bottom-left colorbar with ticks + units, always
- * visible." Color without a legend is decoration (§3.4). Positioned over
+/** "Bottom-left colorbar with ticks + units, always
+ * visible." Color without a legend is decoration. Positioned over
  * the brain canvas, not competing with the right-rail panels. */
 export default function Colorbar({ domain, units }: Props) {
   const [lo, hi] = domain;

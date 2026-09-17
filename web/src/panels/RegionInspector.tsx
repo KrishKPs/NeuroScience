@@ -22,8 +22,8 @@ function InlineBar({ value, domain }: { value: number; domain: [number, number] 
   );
 }
 
-/** Frontend.md §6.2 — right rail, top. Region hover/pin is shared state
- * (§5.4 linked brushing): the brain, this panel, and the validation scatter
+/** Right rail, top. Region hover/pin is shared state
+ * (linked brushing): the brain, this panel, and the validation scatter
  * all read the same hoveredRegionId/pinnedRegionId. */
 export default function RegionInspector({ data }: Props) {
   const disease = useAppStore((s) => s.selectedDisease);

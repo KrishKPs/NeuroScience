@@ -9,7 +9,7 @@ interface Props {
   data: SignatureData;
 }
 
-/** Frontend.md §6.5. Only Parkinson's has an ElasticNet model (CLAUDE.md's
+/** Only Parkinson's has an ElasticNet model (the
  * pipeline only built one, for the primary disease) — SCZ/AD render an
  * honest "not built for this disease" note instead of hiding the panel
  * entirely, so its absence isn't mistaken for a loading/data bug. */
@@ -22,7 +22,7 @@ export default function ModelPanel({ data }: Props) {
       <motion.div key={disease} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
         {!model ? (
           <p className="text-[13px] text-ink-muted">
-            Not built for this disease — see CLAUDE.md §7.7 (primary disease only).
+            Not built for this disease (the model covers the primary disease only).
           </p>
         ) : (
           <div>

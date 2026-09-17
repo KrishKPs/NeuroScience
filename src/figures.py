@@ -1,4 +1,4 @@
-"""Hero / specificity / validation figures. CLAUDE.md §8.
+"""Hero / specificity / validation figures.
 
 Cortical scores are rendered on the fsaverage5 surface (bundled with abagen —
 the same mesh underlying the DK surface parcellation used for the spin test).
@@ -6,7 +6,7 @@ We project region -> vertex ourselves with a direct raw-label lookup rather
 than neuromaps.parcellate.parcels_to_vertices: that function assumes a
 compact 1..N label numbering, but abagen's DK surface GIFTIs use raw DK atlas
 ids (L cortex 1-34, R cortex 42-75, non-contiguous) and crashes with an
-IndexError against them (CLAUDE.md §16) — a direct dict lookup sidesteps the
+IndexError against them — a direct dict lookup sidesteps the
 mismatch entirely and is simpler regardless.
 """
 from __future__ import annotations
@@ -46,7 +46,7 @@ def plot_2d_fallback_schematic(
     save_path=None,
 ):
     """Labeled lateral + superior brain schematic for one disease — the
-    no-WebGL fallback (Frontend.md §12: "a designed 2D experience, not a
+    no-WebGL fallback ("a designed 2D experience, not a
     banner"). Left hemisphere lateral view (matches the hero figure's
     convention) + a top-down view so both hemispheres are visible at once.
     """
@@ -92,8 +92,8 @@ def plot_hero_figure(
     hemi: str = "left",
 ):
     """3 disease signature maps side by side (cortical view). Full 83-region
-    scores are computed for every disease (§7.3); this renders their cortical
-    portion. PD's validated result is subcortical (§16) — shown here for
+    scores are computed for every disease; this renders their cortical
+    portion. PD's validated result is subcortical — shown here for
     visual comparability across diseases, not as PD's primary evidence.
     """
     from nilearn import plotting
@@ -131,7 +131,7 @@ def plot_hero_figure(
 
 
 def plot_specificity_matrix(corr_matrix: pd.DataFrame, save_path=None):
-    """Disease x atrophy-map correlation matrix (§7.6). H3 predicts the
+    """Disease x atrophy-map correlation matrix. H3 predicts the
     diagonal is strongest."""
     fig, ax = plt.subplots(figsize=(6, 5))
     im = ax.imshow(corr_matrix.to_numpy(), cmap="RdBu_r", vmin=-1, vmax=1)
@@ -160,7 +160,7 @@ def plot_specificity_matrix(corr_matrix: pd.DataFrame, save_path=None):
 def plot_validation_scatter(score: pd.Series, atrophy: pd.Series, title: str, p_value: float,
                              null_type: str, save_path=None):
     """Score map vs. ground-truth atrophy scatter, with the spatial null's
-    p-value annotated (§8 deliverable 3)."""
+    p-value annotated."""
     common = score.index.intersection(atrophy.index)
     x = score.loc[common]
     y = atrophy.loc[common]

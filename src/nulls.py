@@ -1,4 +1,4 @@
-"""Null models — the scientific core (CLAUDE.md §7.4, "never skip"). Two
+"""Null models — the scientific core. Two
 complementary nulls, both required before any correlation is reported:
 
 (a) Gene-set null: is the REAL gene set special vs. random gene sets of the
@@ -98,7 +98,7 @@ def subcortical_variogram_null(
     We call brainsmash directly rather than neuromaps.nulls.burt2020 because
     that wrapper's volumetric path expects data embedded in neuromaps' own
     MNI152 reference volume — the wrong tool for a handful of DK subcortical
-    parcels with their own centroid coordinates (see CLAUDE.md §16).
+    parcels with their own centroid coordinates.
 
     `coords` must be indexed the same way as score_map/atrophy_map, with
     columns ['x', 'y', 'z'] (world/MNI space) — see
@@ -143,7 +143,7 @@ def cortical_spin_null(
     density: str = "10k",
 ) -> dict:
     """(b) Spatial null for CORTICAL regions — the Alexander-Bloch spin test,
-    exactly as specified in CLAUDE.md §7.4b. Used for schizophrenia (Week 4),
+    exactly as specified. Used for schizophrenia (Week 4),
     NOT for PD's subcortical proxy (see subcortical_variogram_null above).
     Untested until Week 4 wires in real DK->fsaverage annot files.
     """

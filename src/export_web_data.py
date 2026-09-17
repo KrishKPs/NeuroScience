@@ -1,5 +1,5 @@
 """Export the finished analysis to the web frontend's data contract
-(src/Frontend.md §9) and prepare its static mesh assets (§13). Pure read +
+and prepare its static mesh assets. Pure read +
 reshape of already-committed pipeline outputs — the one new computation
 (top_genes) reuses score.zscore_genes directly so those numbers stay
 consistent with the score already shown elsewhere.
@@ -27,8 +27,8 @@ WEB_PUBLIC = PROJECT_ROOT / "web" / "public"
 WEB_ASSETS = WEB_PUBLIC / "assets"
 WEB_DATA = WEB_PUBLIC / "data"
 
-# Frontend.md uses short disease codes; the rest of the pipeline (CLAUDE.md,
-# run_pipeline.py) uses full names — this is the one place that maps between them.
+# The web app uses short disease codes; the rest of the pipeline
+# (run_pipeline.py) uses full names — this is the one place that maps between them.
 DISEASE_CODES = {"parkinsons": "PD", "schizophrenia": "SCZ", "alzheimers": "AD"}
 DISEASE_CODES_REVERSE = {v: k for k, v in DISEASE_CODES.items()}
 DISEASE_LABELS = {"PD": "Parkinson's", "SCZ": "Schizophrenia", "AD": "Alzheimer's"}
@@ -50,9 +50,9 @@ def _region_display_name(hemi: str, label: str) -> str:
 
 def prepare_mesh_assets(save: bool = True) -> dict:
     """Copy the DK surface + label GIfTI files NiiVue will load directly
-    (Frontend.md §16: GIfTI, not .mz3 — NiiVue supports GIfTI natively for
+    (GIfTI, not .mz3 — NiiVue supports GIfTI natively for
     both mesh geometry and overlays, so the files abagen already ships and
-    CLAUDE.md's pipeline already uses are reused with zero conversion).
+    the pipeline already uses are reused with zero conversion).
 
     Pial: abagen's bundled fsaverage5-pial-{lh,rh}.surf.gii.gz.
     Inflated: neuromaps' cached fsaverage 10k density surface — verified
@@ -98,7 +98,7 @@ def _write_gifti_shape(values: np.ndarray, save_path: Path) -> None:
     nibabel write + read-back (2026-09-11) before trusting it here — chosen
     over trying to mutate an already-loaded NiiVue mesh layer's `values` in
     place client-side, which the library's public API doesn't clearly
-    document a supported way to do (Frontend.md §16).
+    document a supported way to do.
     """
     darr = nib.gifti.GiftiDataArray(
         values.astype(np.float32), intent="NIFTI_INTENT_SHAPE", datatype="NIFTI_TYPE_FLOAT32",
@@ -171,7 +171,7 @@ def export_disease_overlays(save: bool = True) -> None:
 def build_region_index(atlas_info: pd.DataFrame) -> dict:
     """Maps our string region ids ('L_putamen') to the mesh's integer DK
     label ids (37) — the join key the frontend needs to color vertices from
-    region-level data (Frontend.md §9's `region_index` asset)."""
+    region-level data."""
     index = {}
     for _, row in atlas_info.iterrows():
         rid = _region_string_id(row["hemisphere"], row["label"])
@@ -200,7 +200,7 @@ def build_disease_payload(
         atrophy_by_id = pd.read_csv(PROCESSED / "pd_subcortex_atrophy_map.csv", index_col=0)["atrophy_d"].to_dict()
     elif disease == "schizophrenia":
         atrophy_by_id = pd.read_csv(PROCESSED / "scz_cortex_atrophy_map.csv", index_col=0)["atrophy_d"].to_dict()
-    # Alzheimer's: no continuous ENIGMA ground truth exists (CLAUDE.md §16) — atrophy_by_id stays empty.
+    # Alzheimer's: no continuous ENIGMA ground truth exists — atrophy_by_id stays empty.
 
     regions = []
     for _, row in atlas_info.iterrows():
@@ -281,8 +281,8 @@ def build_specificity(disease_codes: list[str]) -> dict:
 
 def build_colormap_domains(diseases: dict) -> dict:
     """Symmetric domains computed from the REAL data range, not the
-    illustrative placeholder numbers in Frontend.md §9's example ([-2.5,2.5]
-    for signature) — our score is a MEAN of z-scored genes (CLAUDE.md §7.3),
+    illustrative placeholder numbers in the data-contract example ([-2.5,2.5]
+    for signature) — our score is a MEAN of z-scored genes,
     which has a far tighter real range (~+/-0.35) than a single gene's raw
     z-score. Using the example's literal domain would wash the colormap out
     to near-white for every real value. Computed 2026-09-11: max abs
@@ -309,8 +309,7 @@ def build_colormap_domains(diseases: dict) -> dict:
 
 
 def export_fallback_schematics(sig_domain: float, save: bool = True) -> None:
-    """Per-disease 2D lateral+superior PNGs for the no-WebGL fallback state
-    (Frontend.md §12 — "a designed 2D experience, not a banner")."""
+    """Per-disease 2D lateral+superior PNGs for the no-WebGL fallback state."""
     atlas_surf = fetch_dk_atlas(surface=True)
     lh_annot, rh_annot = atlas_surf["image"]
 

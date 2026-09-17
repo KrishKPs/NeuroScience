@@ -26,7 +26,7 @@ interface AppState {
   setPinnedRegion: (id: string | null) => void;
 }
 
-/** Frontend.md §7 — one store so any component reads/sets linked-brushing
+/** One store so any component reads/sets linked-brushing
  * state without prop-drilling. Region hover/pin is shared across
  * brain <-> region panel <-> scatter. */
 export const useAppStore = create<AppState>((set) => ({

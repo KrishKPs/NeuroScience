@@ -1,5 +1,5 @@
 # Central config for neuro-signatures.
-# All tunables live here per CLAUDE.md §11 — never hard-code these in src/.
+# All tunables live here — never hard-code these in src/.
 
 seed: 1234
 
@@ -30,7 +30,7 @@ diseases:
     label: "Parkinson's disease"
     # EFO_0002508 is OBSOLETE (verified 2026-09-11 against ebi.ac.uk/ols4;
     # term_replaced_by -> MONDO_0005180). GWAS Catalog associations live under
-    # MONDO_0005180, not EFO_0002508. See CLAUDE.md §16.
+    # MONDO_0005180, not EFO_0002508.
     efo_id: MONDO_0005180
     efo_id_deprecated: EFO_0002508
     target_regions_dk: null  # substantia nigra not in DK
@@ -54,7 +54,7 @@ diseases:
     efo_id_deprecated: EFO_0000249
     target_regions_dk: [entorhinal, hippocampus]
     is_cortical_target: null  # entorhinal is cortical, hippocampus is not — handle separately
-    enigma_dataset: null  # no ENIGMA AD map confirmed yet; fallback = canonical region list (§7.5)
+    enigma_dataset: null  # no ENIGMA AD map confirmed yet; fallback = canonical region list
 
 scoring:
-  method: mean  # robustness check against 'median' in Week 3, per §7.3
+  method: mean  # robustness check against 'median' in Week 3

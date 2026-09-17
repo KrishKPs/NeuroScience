@@ -31,7 +31,7 @@ Catalog** for each disease's genome-wide-significant (p ≤ 5×10⁻⁸) risk ge
 Two of the three GWAS Catalog trait IDs commonly cited for these diseases turned out
 to be obsolete in the current ontology — including Parkinson's own `EFO_0002508` —
 silently returning no data. All three were re-verified live against the API before
-use (see `CLAUDE.md` §16 for the full paper trail).
+use.
 
 ## Method
 

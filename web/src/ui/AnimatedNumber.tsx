@@ -7,9 +7,9 @@ interface Props {
   className?: string;
 }
 
-/** Frontend.md §3.7 — on disease switch, "right-rail values count/
+/** On disease switch, "right-rail values count/
  * interpolate to their new numbers." Respects prefers-reduced-motion
- * (snaps instead of animating), per §3.3 rule 3 and §11.
+ * (snaps instead of animating).
  */
 export default function AnimatedNumber({ value, decimals = 2, className }: Props) {
   const spanRef = useRef<HTMLSpanElement>(null);

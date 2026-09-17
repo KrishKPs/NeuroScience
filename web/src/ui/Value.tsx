@@ -5,7 +5,7 @@ interface Props {
   value: ReactNode;
 }
 
-/** Label left, value right-aligned with tabular figures — Frontend.md §3.6:
+/** Label left, value right-aligned with tabular figures:
  * "numeric values right-aligned within their rows so they form a clean
  * column." */
 export default function Value({ label, value }: Props) {

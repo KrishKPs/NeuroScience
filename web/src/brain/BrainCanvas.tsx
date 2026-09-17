@@ -10,7 +10,7 @@ import { registerColormaps, DIVERGING_COLORMAP_NAME } from "./colormaps";
 // nvdocument .d.ts (not guessed). Its fields are non-optional there even
 // though NVMeshLayerDefaults implies runtime defaults exist; supplying them
 // explicitly satisfies the type checker and removes any doubt about
-// whether default-merging actually happens (Frontend.md §16: verify, don't
+// whether default-merging actually happens (verify, don't
 // assume, for anything untestable live in this session).
 interface MeshLayerInput {
   name?: string;
@@ -52,8 +52,7 @@ function meshLayer(overrides: Partial<MeshLayerInput> & { url: string }): MeshLa
 // Camera angles are best-effort per standard neuroimaging convention
 // (azimuth around the vertical axis, elevation above/below the horizontal
 // plane) and have NOT been visually confirmed against NiiVue's own azimuth=0
-// reference direction (this session could not render WebGL to check —
-// Frontend.md §16). "Medial" reuses the lateral-R angle: a medial view only
+// reference direction (this session could not render WebGL to check). "Medial" reuses the lateral-R angle: a medial view only
 // reads correctly when paired with hemisphere="left" (hiding the right
 // hemisphere so you're looking at the left hemisphere's inner/medial
 // surface) — that pairing isn't enforced here, just documented.
@@ -71,14 +70,14 @@ interface Props {
   onNiivueError: (message: string) => void;
 }
 
-/** The hero — NiiVue-driven 3D brain (Frontend.md §5). Loads the DK
+/** The hero — NiiVue-driven 3D brain. Loads the DK
  * cortical mesh (pial/inflated toggle), a low-opacity discrete atlas layer
  * for structural context, and the selected disease's signature/atrophy
  * overlay. Disease/overlay/surface changes reload the mesh+layers (a full
  * reload, not an in-place value mutation — NiiVue's public API doesn't
  * clearly document a supported way to mutate an already-loaded mesh
  * layer's values in place, so the well-documented `loadMeshes` path is used
- * instead; see Frontend.md §16 for the reasoning). Region hover/click is
+ * instead). Region hover/click is
  * read from `onLocationChange`'s per-layer `values` array, matching the
  * atlas layer's raw label id back to a region via `regionIndex`.
  */
@@ -154,8 +153,7 @@ export default function BrainCanvas({ data, regionIndex, onNiivueError }: Props)
     const overlayPaths = data.assets.overlays[disease][overlayMode];
 
     if (!overlayPaths) {
-      // AD has no atrophy/diff overlay (no continuous ENIGMA ground truth —
-      // CLAUDE.md §16) — caller (OverlayToggle) should already prevent
+      // AD has no atrophy/diff overlay (no continuous ENIGMA ground truth) — caller (OverlayToggle) should already prevent
       // selecting those modes for AD; this is a defensive no-op, not a crash.
       return;
     }

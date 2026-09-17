@@ -1,4 +1,4 @@
-// Frontend.md §3.4's exact diverging stops — the single source of truth,
+// The exact diverging stops — the single source of truth,
 // used by both brain/colormaps.ts (registered with NiiVue for the 3D
 // overlay) and the visx panels (specificity matrix, validation scatter), so
 // the 3D view and the 2D charts never drift into different palettes.

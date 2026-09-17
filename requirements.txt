@@ -1,4 +1,4 @@
-# Pinned 2026-09-11 on Python 3.11 (conda env `neuro-signatures`). See CLAUDE.md §10/§16.
+# Pinned 2026-09-11 on Python 3.11 (conda env `neuro-signatures`).
 #
 # NOTE 1: setuptools must stay <81 — abagen's mouse submodule imports pkg_resources,
 # which setuptools>=81 dropped. Without this pin, `import abagen` fails with
@@ -30,13 +30,13 @@ neuromaps==0.0.7
 #   pip install "git+https://github.com/MICA-MNI/ENIGMA.git"
 enigmatoolbox==2.0.3
 
-# Optional (§10, brain-surface plotting). NOTE: nilearn 0.14.1's stated requirement is
+# Optional (brain-surface plotting). NOTE: nilearn 0.14.1's stated requirement is
 # pandas>=2.3.0, which conflicts with the pandas==1.5.3 pin above (`pip check` will flag
 # this). In practice nilearn imports and runs fine under pandas 1.5.3 for the plotting
 # calls this project uses — if that changes, drop nilearn and plot with matplotlib only.
 nilearn
 
-# Required by neuromaps.nulls.burt2020 (§7.4b, subcortical variogram null) — an optional
+# Required by neuromaps.nulls.burt2020 (subcortical variogram null) — an optional
 # install neuromaps does NOT bundle; without it burt2020() raises ImportError. We also
 # call brainsmash.mapgen.Base directly for the subcortex (see src/nulls.py) since
 # burt2020's volumetric path expects neuromaps' own MNI152 reference embedding, which

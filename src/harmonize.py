@@ -1,5 +1,5 @@
 """Reconcile GWAS Catalog gene symbols against the AHBA expression matrix's
-gene columns (HGNC symbols from abagen). See CLAUDE.md §7.2.
+gene columns (HGNC symbols from abagen).
 
 This is the "boring 40%" the project plan calls out: GWAS Catalog gene symbols
 are author-reported and not guaranteed to match current HGNC nomenclature used
@@ -15,7 +15,7 @@ import pandas as pd
 def reconcile_genes(risk_genes: pd.DataFrame, expression: pd.DataFrame) -> dict:
     """Match a GWAS risk-gene table (column 'gene') against expression matrix
     columns (genes). Returns a dict with the matched gene list, the dropped
-    list, and the survival rate — log all three, per CLAUDE.md §7.2.
+    list, and the survival rate — log all three.
     """
     gwas_set = set(risk_genes["gene"])
     expr_set = set(expression.columns)

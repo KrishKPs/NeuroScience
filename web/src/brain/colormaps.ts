@@ -24,7 +24,7 @@ function buildDivergingColormap() {
   return { R, G, B, A, I };
 }
 
-/** Registers the Frontend.md §3.4 diverging colormap (lib/colorScale.ts —
+/** Registers the diverging colormap (lib/colorScale.ts —
  * the single source of truth also used by the visx panels) with a NiiVue
  * instance. Call once after the instance is created, before loading meshes
  * that reference `DIVERGING_COLORMAP_NAME`. */

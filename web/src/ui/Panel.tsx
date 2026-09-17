@@ -6,7 +6,7 @@ interface Props {
   className?: string;
 }
 
-/** Frontend.md §3.6 — "Panels separated by --hairline, not shadowed cards."
+/** "Panels separated by --hairline, not shadowed cards."
  * No border-radius-and-shadow SaaS-card look; a flat surface with a
  * hairline top rule reads as an instrument, not a widget. */
 export default function Panel({ title, children, className = "" }: Props) {

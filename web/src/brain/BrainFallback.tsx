@@ -6,7 +6,7 @@ interface Props {
   reason: string;
 }
 
-/** No-WebGL fallback (Frontend.md §12): "a designed 2D experience, not a
+/** No-WebGL fallback: "a designed 2D experience, not a
  * banner." Shows the selected disease's pre-rendered lateral+superior
  * schematic (src/figures.py::plot_2d_fallback_schematic — same colormap,
  * same data). Region-level hover linking isn't available here: a static

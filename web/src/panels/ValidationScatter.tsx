@@ -13,9 +13,9 @@ const WIDTH = 640;
 const HEIGHT = 200;
 const MARGIN = { top: 10, right: 20, bottom: 32, left: 48 };
 
-/** Frontend.md §6.6 — bottom, full-width, linked. The quantitative proof
+/** Bottom, full-width, linked. The quantitative proof
  * the brain colors aren't just pretty. AD has no continuous ENIGMA ground
- * truth (CLAUDE.md §16) — every region.atrophy is null for it, so this
+ * truth — every region.atrophy is null for it, so this
  * shows an honest message instead of an empty or fabricated plot. */
 export default function ValidationScatter({ data }: Props) {
   const disease = useAppStore((s) => s.selectedDisease);
