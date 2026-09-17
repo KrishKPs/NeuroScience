@@ -19,3 +19,23 @@ venv/
 # reproducible from run_pipeline.py, same convention as results/figures/)
 web/node_modules/
 web/dist/
+
+# --- common ---
+# OS / editor
+._*
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+*.py[cod]
+
+# Node
+node_modules/
+dist/
+*.log
